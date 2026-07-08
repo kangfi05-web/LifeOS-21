@@ -26,6 +26,11 @@ export class LifeJourneyRepository {
     return await db.lifeJourney.orderBy('date').reverse().toArray();
   }
 
+  // Ambil N entri terbaru langsung lewat index 'date' (tanpa fetch seluruh tabel + sort di JS)
+  async getRecent(limit: number = 20): Promise<LifeJourney[]> {
+    return await db.lifeJourney.orderBy('date').reverse().limit(limit).toArray();
+  }
+
   async getByDate(date: Date): Promise<LifeJourney[]> {
     const start = startOfDay(date);
     const end = endOfDay(date);

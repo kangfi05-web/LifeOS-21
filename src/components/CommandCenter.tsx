@@ -1,6 +1,6 @@
 // Command Center - Universal Search & Command Engine
 
-import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -71,6 +71,10 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Nilai query yang "ditunda" untuk kalkulasi berat (filter/sort/parse), supaya
+  // ketikan di input tidak pernah terasa lag walau data & hasil pencarian banyak.
+  const deferredQuery = useDeferredValue(searchQuery);
 
   // Focus input & load data index saat command palette dibuka
   useEffect(() => {
@@ -332,7 +336,7 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
   // Command hasil parsing Natural Language ("tambah dana 50000", dsb),
   // ditampilkan sebagai satu hasil instan paling atas jika query cocok pola.
   const smartCommand: CommandAction | null = useMemo(() => {
-    const parsed = parseNaturalCommand(searchQuery);
+    const parsed = parseNaturalCommand(deferredQuery);
     if (!parsed) return null;
 
     let action: () => void;
@@ -370,7 +374,7 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
       action,
       keywords: [],
     };
-  }, [searchQuery, onOpenQuickAdd, onOpenGoalModal, setCurrentPage]);
+  }, [deferredQuery, onOpenQuickAdd, onOpenGoalModal, setCurrentPage]);
 
   // Gabungkan command statis + hasil data dari Dexie
   const combinedCommands = useMemo(
@@ -380,11 +384,11 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
 
   // Fuzzy search dengan skor relevansi (typo-tolerant)
   const filteredCommands = useMemo(() => {
-    if (!searchQuery.trim()) {
+    if (!deferredQuery.trim()) {
       return combinedCommands.map((cmd) => ({ cmd, score: 0 }));
     }
 
-    const query = searchQuery.trim();
+    const query = deferredQuery.trim();
     const results: { cmd: CommandAction; score: number }[] = [];
 
     for (const cmd of combinedCommands) {
@@ -393,7 +397,7 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
     }
 
     return results;
-  }, [combinedCommands, searchQuery]);
+  }, [combinedCommands, deferredQuery]);
 
   // Urutkan: favorit dulu, lalu recent, sisanya diranking berdasarkan
   // skor relevansi pencarian + frekuensi pemakaian (semakin sering dipakai, semakin atas)

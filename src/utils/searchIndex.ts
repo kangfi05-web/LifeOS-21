@@ -47,7 +47,7 @@ export async function buildSearchIndex(forceRefresh = false): Promise<SearchData
     walletRepository.getAll(),
     transactionRepository.getRecent(RECENT_TRANSACTION_LIMIT),
     achievementRepository.getAll(),
-    lifeJourneyRepository.getAll(),
+    lifeJourneyRepository.getRecent(RECENT_JOURNEY_LIMIT),
   ]);
 
   const items: SearchDataItem[] = [];
@@ -99,11 +99,7 @@ export async function buildSearchIndex(forceRefresh = false): Promise<SearchData
     });
   }
 
-  const recentJourneys = [...journeys]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, RECENT_JOURNEY_LIMIT);
-
-  for (const journey of recentJourneys) {
+  for (const journey of journeys) {
     items.push({
       id: `journey-${journey.id}`,
       entityType: 'journey',

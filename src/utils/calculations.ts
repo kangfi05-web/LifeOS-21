@@ -1,7 +1,7 @@
 // Utility Functions
 
 import { format, formatDistanceToNow, differenceInDays, differenceInCalendarDays, isBefore, startOfDay, addDays } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id } from 'date-fns/locale/id';
 
 // Format Currency - Indonesian Rupiah
 export function formatCurrency(amount: number, compact: boolean = false): string {

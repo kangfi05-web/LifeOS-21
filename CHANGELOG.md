@@ -7,6 +7,16 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.6.0] - 2026-07-08
+### Performance
+- **Query database lebih efisien**: Life Journey kini diambil langsung lewat index Dexie (`getRecent`) alih-alih ambil seluruh tabel lalu di-sort di JavaScript — lebih cepat & scalable seiring data bertambah
+- **Import locale lebih presisi**: `date-fns/locale` diarahkan ke subpath `date-fns/locale/id` agar tree-shaking terjamin di semua bundler, bukan bergantung asumsi
+- **Universal Search makin responsif**: input pencarian di Command Center (CTRL+K) sekarang pakai `useDeferredValue` — ketikan tidak pernah terasa lag walau hasil pencarian & data banyak, karena kalkulasi berat (fuzzy match, parsing command) "ditunda" sepersekian detik tanpa mengganggu input
+
+### Notes
+- Chunk `vendor-charts` (recharts) tetap ~512KB tapi sudah terisolasi & hanya dimuat saat halaman Analytics dibuka (lazy), tidak membebani halaman lain. Untuk pengecilan lebih lanjut perlu ganti library chart — dicatat sebagai rekomendasi pengembangan berikutnya, bukan dikerjakan sekarang karena berisiko tinggi untuk manfaat yang belum tentu terasa oleh pengguna.
+- Ditemukan data sample hardcode di grafik "Progress Mingguan" pada Dashboard (bukan masalah performa, tapi soal akurasi data) — direkomendasikan diperbaiki di sesi berikutnya seperti halnya Analytics sebelumnya.
+
 ## [1.5.0] - 2026-07-08
 ### Added
 - **Universal Search & Command Engine** (CTRL+K / CMD+K) — command palette yang sudah ada sebelumnya kini ditingkatkan jadi pencarian universal:

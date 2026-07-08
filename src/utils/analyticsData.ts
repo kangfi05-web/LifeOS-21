@@ -2,7 +2,7 @@
 // (menggantikan mock data yang sebelumnya dipakai di halaman Analytics)
 
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id as localeId } from 'date-fns/locale/id';
 import { goalRepository, transactionRepository, dailyProgressRepository, achievementRepository } from '../repositories';
 import { GOAL_CATEGORIES } from '../constants';
 import { GoalCategory } from '../types';
