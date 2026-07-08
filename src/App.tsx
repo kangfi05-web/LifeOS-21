@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { useAppStore } from './stores';
 import { ThemeProvider } from './design-system';
 import { ToastProvider } from './components/ui';
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const GoalsPage = lazy(() => import('./pages/Goals').then((m) => ({ default: m.GoalsPage })));
@@ -69,6 +70,7 @@ function App() {
             </Suspense>
           </AnimatePresence>
         </Layout>
+        <PWAUpdatePrompt />
       </ToastProvider>
     </ThemeProvider>
   );

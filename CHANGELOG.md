@@ -7,6 +7,11 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.4.0] - 2026-07-08
+### Added
+- **Notifikasi update otomatis** — saat ada versi baru LifeOS ter-deploy, pengguna yang sudah meng-install aplikasi akan melihat notifikasi kecil "Update Tersedia" dengan tombol "Perbarui Sekarang"
+- Aplikasi otomatis cek versi baru setiap 60 menit selagi dibuka, tanpa mengganggu penggunaan
+
 ## [1.3.0] - 2026-07-08
 ### Added
 - **PWA (Progressive Web App)** — aplikasi sekarang bisa di-*install* ke Home Screen (HP) atau desktop, dan tetap bisa dibuka meski koneksi internet terputus (offline-capable untuk halaman & tampilan; data tetap tersimpan lokal di IndexedDB seperti sebelumnya)
