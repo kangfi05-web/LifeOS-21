@@ -1,18 +1,68 @@
 // Settings Page
 
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, Moon, Sun, Bell, Globe, Palette, Save } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Bell, Globe, Palette, Save, Download, Upload, DatabaseBackup } from 'lucide-react';
 import { useTheme } from '../design-system';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { downloadBackupFile, restoreBackupFromFile } from '../utils/backupExport';
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [currency, setCurrency] = useState('IDR');
   const [language, setLanguage] = useState('id');
+  const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
     setTheme(newTheme);
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    setBackupStatus(null);
+    try {
+      await downloadBackupFile();
+      setBackupStatus({ type: 'success', message: 'Backup berhasil diunduh.' });
+    } catch (err) {
+      setBackupStatus({ type: 'error', message: 'Gagal membuat backup. Coba lagi.' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const confirmed = window.confirm(
+      'Memulihkan backup akan MENGGANTI seluruh data saat ini dengan data dari file backup. Lanjutkan?'
+    );
+    if (!confirmed) {
+      e.target.value = '';
+      return;
+    }
+
+    setIsImporting(true);
+    setBackupStatus(null);
+    try {
+      const result = await restoreBackupFromFile(file, 'replace');
+      setBackupStatus({ type: result.success ? 'success' : 'error', message: result.message });
+      if (result.success) {
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch (err) {
+      setBackupStatus({ type: 'error', message: 'Gagal memulihkan backup. Pastikan file benar.' });
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+    }
   };
 
   return (
@@ -194,6 +244,70 @@ export function SettingsPage() {
         </div>
       </motion.div>
 
+      {/* Backup & Restore */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="bg-surface rounded-2xl border border-white/5 p-6"
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+            <DatabaseBackup className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="font-semibold">Backup & Restore</h2>
+            <p className="text-sm text-base-400">Simpan atau pulihkan data Anda</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm text-base-400">
+            Data Anda tersimpan di browser ini saja. Ekspor secara berkala agar data tidak hilang jika
+            cache dibersihkan atau berganti perangkat.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              {isExporting ? 'Mengekspor...' : 'Ekspor Backup (.json)'}
+            </button>
+
+            <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium disabled:opacity-50"
+            >
+              <Upload className="w-4 h-4" />
+              {isImporting ? 'Memulihkan...' : 'Impor Backup'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+          </div>
+
+          {backupStatus && (
+            <div
+              className={`text-sm rounded-xl px-4 py-3 border ${
+                backupStatus.type === 'success'
+                  ? 'bg-success/10 border-success/30 text-success'
+                  : 'bg-danger/10 border-danger/30 text-danger'
+              }`}
+            >
+              {backupStatus.message}
+            </div>
+          )}
+        </div>
+      </motion.div>
+
       {/* Save Button */}
       <motion.button
         initial={{ opacity: 0, y: 20 }}
@@ -216,7 +330,7 @@ export function SettingsPage() {
       >
         <p className="font-semibold text-white">LifeOS</p>
         <p className="mt-1">Personal Financial Operating System</p>
-        <p className="mt-2">Version 1.0.0</p>
+        <p className="mt-2">Version 1.1.0</p>
       </motion.div>
     </div>
   );
