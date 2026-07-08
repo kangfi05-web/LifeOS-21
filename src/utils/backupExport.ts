@@ -4,6 +4,7 @@
 // data tetap aman walau browser/cache dihapus atau pindah device.
 
 import { db } from '../database';
+import type { Table } from 'dexie';
 
 const BACKUP_VERSION = 1;
 
@@ -39,12 +40,18 @@ const TABLES = [
   'analyticsCache',
 ] as const;
 
+type TableName = (typeof TABLES)[number];
+
+function getTable(name: TableName): Table<unknown, string> {
+  return db[name] as unknown as Table<unknown, string>;
+}
+
 // Mengumpulkan semua data dari IndexedDB menjadi satu objek JSON
 export async function exportBackupData(): Promise<BackupFile> {
   const data: Record<string, unknown[]> = {};
 
   for (const table of TABLES) {
-    data[table] = await (db as any)[table].toArray();
+    data[table] = await getTable(table).toArray();
   }
 
   return {
@@ -72,13 +79,13 @@ export async function downloadBackupFile(): Promise<void> {
 }
 
 // Validasi struktur file backup sebelum di-restore
-function isValidBackupFile(obj: any): obj is BackupFile {
+function isValidBackupFile(obj: unknown): obj is BackupFile {
+  if (!obj || typeof obj !== 'object') return false;
+  const candidate = obj as Record<string, unknown>;
   return (
-    obj &&
-    typeof obj === 'object' &&
-    typeof obj.backupVersion === 'number' &&
-    obj.data &&
-    typeof obj.data === 'object'
+    typeof candidate.backupVersion === 'number' &&
+    !!candidate.data &&
+    typeof candidate.data === 'object'
   );
 }
 
@@ -106,11 +113,11 @@ export async function restoreBackupFromFile(
       const rows = (parsed as BackupFile).data[table] ?? [];
 
       if (mode === 'replace') {
-        await (db as any)[table].clear();
+        await getTable(table).clear();
       }
 
       if (rows.length > 0) {
-        await (db as any)[table].bulkPut(rows);
+        await getTable(table).bulkPut(rows);
       }
     }
   });

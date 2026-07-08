@@ -1,30 +1,54 @@
 // Analytics Page
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Target, Wallet, Flame, Trophy } from 'lucide-react';
-import { useDashboardStore } from '../stores';
 import { formatCurrency } from '../utils/calculations';
+import { getAnalyticsData, AnalyticsData } from '../utils/analyticsData';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const mockWeeklyData = [
-  { name: 'Sen', amount: 125000 },
-  { name: 'Sel', amount: 85000 },
-  { name: 'Rab', amount: 150000 },
-  { name: 'Kam', amount: 45000 },
-  { name: 'Jum', amount: 100000 },
-  { name: 'Sab', amount: 75000 },
-  { name: 'Min', amount: 120000 },
-];
-
-const mockCategoryData = [
-  { name: 'Rumah', value: 45, color: '#3B82F6' },
-  { name: 'Mobil', value: 25, color: '#F59E0B' },
-  { name: 'Liburan', value: 15, color: '#06B6D4' },
-  { name: 'Dana Darurat', value: 15, color: '#10B981' },
-];
-
 export function AnalyticsPage() {
-  const { summary } = useDashboardStore();
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function load() {
+      try {
+        const result = await getAnalyticsData();
+        if (isMounted) setData(result);
+      } catch {
+        if (isMounted) setError('Gagal memuat data analitik.');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-base-400 text-sm">Memuat data analitik...</div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-danger text-sm">{error ?? 'Data tidak tersedia.'}</div>
+      </div>
+    );
+  }
+
+  const totalCollectedThisWeek = data.weeklyData.reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -39,33 +63,27 @@ export function AnalyticsPage() {
         <StatCard
           icon={Target}
           label="Target Aktif"
-          value={summary?.activeGoals?.toString() || '0'}
-          trend="up"
-          trendValue="12%"
+          value={data.activeGoalsCount.toString()}
           color="from-blue-500 to-cyan-500"
         />
         <StatCard
           icon={Wallet}
-          label="Total Terkumpul"
-          value={formatCurrency(summary?.totalCollected || 0)}
-          trend="up"
-          trendValue="18%"
+          label="Terkumpul Minggu Ini"
+          value={formatCurrency(totalCollectedThisWeek)}
+          trend={data.weeklyTrendPercent >= 0 ? 'up' : 'down'}
+          trendValue={`${data.weeklyTrendPercent >= 0 ? '+' : ''}${data.weeklyTrendPercent}%`}
           color="from-green-500 to-emerald-500"
         />
         <StatCard
           icon={Flame}
           label="Streak"
-          value="7 hari"
-          trend="up"
-          trendValue="2 hari"
+          value={`${data.currentStreak} hari`}
           color="from-orange-500 to-amber-500"
         />
         <StatCard
           icon={Trophy}
           label="Achievement"
-          value="12"
-          trend="up"
-          trendValue="3 baru"
+          value={data.achievementCount.toString()}
           color="from-purple-500 to-violet-500"
         />
       </div>
@@ -80,42 +98,48 @@ export function AnalyticsPage() {
         >
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold">Progress Mingguan</h3>
-            <div className="flex items-center gap-2 text-success">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">+15%</span>
+            <div className={`flex items-center gap-2 ${data.weeklyTrendPercent >= 0 ? 'text-success' : 'text-danger'}`}>
+              {data.weeklyTrendPercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              <span className="text-sm">{data.weeklyTrendPercent >= 0 ? '+' : ''}{data.weeklyTrendPercent}%</span>
             </div>
           </div>
 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockWeeklyData}>
-                <defs>
-                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" stroke="#64748B" fontSize={12} />
-                <YAxis stroke="#64748B" fontSize={12} tickFormatter={(v) => `${v / 1000}K`} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                  }}
-                  formatter={(value: unknown) => [formatCurrency(typeof value === 'number' ? value : 0), 'Dana']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#3B82F6"
-                  fillOpacity={1}
-                  fill="url(#colorAmount)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {totalCollectedThisWeek === 0 ? (
+            <div className="h-64 flex items-center justify-center text-sm text-base-400 text-center px-6">
+              Belum ada dana yang ditambahkan minggu ini. Grafik akan muncul setelah Anda mulai menabung.
+            </div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.weeklyData}>
+                  <defs>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" stroke="#64748B" fontSize={12} />
+                  <YAxis stroke="#64748B" fontSize={12} tickFormatter={(v) => `${v / 1000}K`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1a1a1a',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                    }}
+                    formatter={(value: unknown) => [formatCurrency(typeof value === 'number' ? value : 0), 'Dana']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#3B82F6"
+                    fillOpacity={1}
+                    fill="url(#colorAmount)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </motion.div>
 
         {/* Category Distribution */}
@@ -127,42 +151,48 @@ export function AnalyticsPage() {
         >
           <h3 className="text-lg font-semibold mb-6">Distribusi Target</h3>
 
-          <div className="flex items-center gap-6">
-            <div className="h-48 w-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={mockCategoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {mockCategoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
+          {!data.hasCategoryData ? (
+            <div className="h-48 flex items-center justify-center text-sm text-base-400 text-center px-6">
+              Belum ada dana terkumpul di target manapun. Tambahkan tabungan untuk melihat distribusinya.
             </div>
+          ) : (
+            <div className="flex items-center gap-6">
+              <div className="h-48 w-48 flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={data.categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {data.categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
 
-            <div className="flex-1 space-y-3">
-              {mockCategoryData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-sm">{item.name}</span>
+              <div className="flex-1 space-y-3">
+                {data.categoryData.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-sm">{item.name}</span>
+                    </div>
+                    <span className="font-medium">{item.value}%</span>
                   </div>
-                  <span className="font-medium">{item.value}%</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
       </div>
 
@@ -179,7 +209,7 @@ export function AnalyticsPage() {
             <p className="text-base-400 mt-1">Berdasarkan konsistensi dan progress Anda</p>
           </div>
           <div className="text-right">
-            <div className="text-5xl font-bold text-success">78</div>
+            <div className="text-5xl font-bold text-success">{data.healthScore}</div>
             <span className="text-sm text-base-400">dari 100</span>
           </div>
         </div>
@@ -187,7 +217,7 @@ export function AnalyticsPage() {
         <div className="mt-6 h-4 bg-white/5 rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: '78%' }}
+            animate={{ width: `${data.healthScore}%` }}
             transition={{ duration: 1, delay: 0.5 }}
             className="h-full bg-gradient-to-r from-success to-emerald-400 rounded-full"
           />
@@ -224,7 +254,7 @@ function StatCard({ icon: Icon, label, value, trend, trendValue, color }: StatCa
           <Icon className="w-5 h-5 text-white" />
         </div>
         {trend && (
-          <div className={`flex items-center gap-1 ${trend === 'up' ? 'text-success' : 'text-error'}`}>
+          <div className={`flex items-center gap-1 ${trend === 'up' ? 'text-success' : 'text-danger'}`}>
             {trend === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="text-xs">{trendValue}</span>
           </div>

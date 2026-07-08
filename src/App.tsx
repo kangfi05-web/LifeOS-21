@@ -1,23 +1,22 @@
 // LifeOS Main Application
 
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Layout } from './components/Layout';
 import { useAppStore } from './stores';
 import { ThemeProvider } from './design-system';
 import { ToastProvider } from './components/ui';
-import {
-  Dashboard,
-  GoalsPage,
-  WalletPage,
-  CalendarPage,
-  AnalyticsPage,
-  AchievementsPage,
-  LifeJourneyPage,
-  DreamUniversePage,
-  SimulatorPage,
-  SettingsPage,
-} from './pages';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const GoalsPage = lazy(() => import('./pages/Goals').then((m) => ({ default: m.GoalsPage })));
+const WalletPage = lazy(() => import('./pages/Wallet').then((m) => ({ default: m.WalletPage })));
+const CalendarPage = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.CalendarPage })));
+const AnalyticsPage = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.AnalyticsPage })));
+const AchievementsPage = lazy(() => import('./pages/Achievements').then((m) => ({ default: m.AchievementsPage })));
+const LifeJourneyPage = lazy(() => import('./pages/LifeJourney').then((m) => ({ default: m.LifeJourneyPage })));
+const DreamUniversePage = lazy(() => import('./pages/DreamUniverse').then((m) => ({ default: m.DreamUniversePage })));
+const SimulatorPage = lazy(() => import('./pages/Simulator').then((m) => ({ default: m.SimulatorPage })));
+const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 
 function App() {
   const { initialize, initialized, loading, currentPage } = useAppStore();
@@ -65,11 +64,21 @@ function App() {
       <ToastProvider>
         <Layout>
           <AnimatePresence mode="wait">
-            {renderPage()}
+            <Suspense fallback={<PageLoadingFallback />}>
+              {renderPage()}
+            </Suspense>
           </AnimatePresence>
         </Layout>
       </ToastProvider>
     </ThemeProvider>
+  );
+}
+
+function PageLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+    </div>
   );
 }
 

@@ -16,7 +16,7 @@ export function SettingsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
   };
 
@@ -26,7 +26,7 @@ export function SettingsPage() {
     try {
       await downloadBackupFile();
       setBackupStatus({ type: 'success', message: 'Backup berhasil diunduh.' });
-    } catch (err) {
+    } catch {
       setBackupStatus({ type: 'error', message: 'Gagal membuat backup. Coba lagi.' });
     } finally {
       setIsExporting(false);
@@ -57,7 +57,7 @@ export function SettingsPage() {
       if (result.success) {
         setTimeout(() => window.location.reload(), 1200);
       }
-    } catch (err) {
+    } catch {
       setBackupStatus({ type: 'error', message: 'Gagal memulihkan backup. Pastikan file benar.' });
     } finally {
       setIsImporting(false);
@@ -120,9 +120,9 @@ export function SettingsPage() {
                 <span className="text-sm font-medium">Gelap</span>
               </button>
               <button
-                onClick={() => handleThemeChange('auto')}
+                onClick={() => handleThemeChange('system')}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-                  theme === 'auto'
+                  theme === 'system'
                     ? 'border-primary-500 bg-primary-500/10'
                     : 'border-white/5 hover:border-white/10'
                 }`}
@@ -330,7 +330,7 @@ export function SettingsPage() {
       >
         <p className="font-semibold text-white">LifeOS</p>
         <p className="mt-1">Personal Financial Operating System</p>
-        <p className="mt-2">Version 1.1.0</p>
+        <p className="mt-2">Version 1.2.0</p>
       </motion.div>
     </div>
   );

@@ -44,6 +44,15 @@ export class LifeJourneyRepository {
       .toArray();
   }
 
+  async getByDateRange(startDate: Date, endDate: Date): Promise<LifeJourney[]> {
+    const start = startOfDay(startDate);
+    const end = endOfDay(endDate);
+    return await db.lifeJourney
+      .where('date')
+      .between(start, end)
+      .toArray();
+  }
+
   async getByYear(year: number): Promise<LifeJourney[]> {
     const start = new Date(year, 0, 1);
     const end = new Date(year, 11, 31);

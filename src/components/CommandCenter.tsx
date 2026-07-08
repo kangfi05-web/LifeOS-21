@@ -232,7 +232,7 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
         description: 'Ikuti sistem',
         icon: 'Globe',
         category: 'settings',
-        action: () => setTheme('auto'),
+        action: () => setTheme('system'),
         keywords: ['auto', 'otomatis', 'system', 'theme'],
       },
 

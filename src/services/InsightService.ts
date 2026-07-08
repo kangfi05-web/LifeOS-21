@@ -246,7 +246,7 @@ export class InsightService {
 
     // Goals completed this month
     const completedThisMonth = completedGoals.filter(
-      (g) => g.completedAt && new Date(g.completedAt) >= monthStart && new Date(g.completedAt) <= monthEnd
+      (g) => g.updatedAt && new Date(g.updatedAt) >= monthStart && new Date(g.updatedAt) <= monthEnd
     );
 
     if (completedThisMonth.length > 0) {
@@ -330,7 +330,7 @@ export class InsightService {
     }
 
     const completedThisMonth = completedGoals.filter(
-      (g) => g.completedAt && new Date(g.completedAt) >= monthStart && new Date(g.completedAt) <= monthEnd
+      (g) => g.updatedAt && new Date(g.updatedAt) >= monthStart && new Date(g.updatedAt) <= monthEnd
     );
 
     // Find best wallet

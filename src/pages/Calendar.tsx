@@ -57,8 +57,7 @@ export function CalendarPage() {
     setSelectedDate(new Date());
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getDailyTargetForDate = (date: Date): number => {
+  const getDailyTargetForDate = (): number => {
     return activeGoals.reduce((sum, goal) => sum + goal.dailyTarget, 0);
   };
 
@@ -126,7 +125,7 @@ export function CalendarPage() {
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const isTodayDate = isToday(day);
-            const dailyTarget = getDailyTargetForDate(day);
+            const dailyTarget = getDailyTargetForDate();
 
             return (
               <motion.button
@@ -167,7 +166,7 @@ export function CalendarPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-base-400 text-sm">Target Harian Total</p>
-                  <p className="text-2xl font-bold text-success">{formatCurrency(getDailyTargetForDate(selectedDate))}</p>
+                  <p className="text-2xl font-bold text-success">{formatCurrency(getDailyTargetForDate())}</p>
                 </div>
                 <Target className="w-10 h-10 text-base-400" />
               </div>
