@@ -7,6 +7,12 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.7.0] - 2026-07-08
+### Fixed
+- **Bug perhitungan target harian (dailyTarget) tidak "mengejar" hari yang terlewat** — sebelumnya, `dailyTarget` cuma dihitung ulang saat ada transaksi nabung masuk. Kalau user tidak menabung sama sekali selama beberapa hari, angka target harian tetap memakai nilai lama (basi), padahal seharusnya naik untuk mengganti hari-hari yang terlewat agar target tetap tercapai di tanggal deadline
+- Sekarang `dailyTarget`, `weeklyTarget`, dan `monthlyTarget` dihitung ulang otomatis berdasarkan **sisa dana ÷ sisa hari ke deadline** setiap kali aplikasi dibuka, dan dicek ulang tiap 15 menit kalau aplikasi dibiarkan terbuka lewat tengah malam — sehingga kekurangan dari hari yang terlewat otomatis terdistribusi ke hari-hari berikutnya
+- Kalau deadline sudah lewat sebelum target selesai, dailyTarget menampilkan sisa dana penuh (menandakan sudah harus dikejar sekarang)
+
 ## [1.6.0] - 2026-07-08
 ### Performance
 - **Query database lebih efisien**: Life Journey kini diambil langsung lewat index Dexie (`getRecent`) alih-alih ambil seluruh tabel lalu di-sort di JavaScript — lebih cepat & scalable seiring data bertambah

@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Settings, User } from '../types';
 import { userRepository, settingsRepository } from '../repositories/OtherRepositories';
+import { goalRepository } from '../repositories/GoalRepository';
 import { initializeDatabase } from '../database';
 
 interface AppState {
@@ -41,6 +42,10 @@ export const useAppStore = create<AppState>()(
         try {
           // Initialize database with default data
           await initializeDatabase();
+
+          // Hitung ulang target harian semua goal aktif berdasarkan tanggal hari ini,
+          // supaya kekurangan dari hari-hari yang terlewat otomatis "mengejar" ke sisa hari.
+          await goalRepository.recalculateActiveTargets();
 
           // Load user and settings
           const user = await userRepository.getCurrentUser();

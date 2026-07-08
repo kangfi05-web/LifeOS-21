@@ -124,6 +124,39 @@ export class GoalRepository {
     return await this.getById(id);
   }
 
+  // Hitung ulang dailyTarget/weeklyTarget/monthlyTarget semua goal aktif berdasarkan
+  // TANGGAL HARI INI — bukan cuma saat ada transaksi. Ini memastikan kalau user
+  // beberapa hari tidak menabung, kekurangannya otomatis "menumpuk" dan terdistribusi
+  // ke sisa hari yang ada, bukan malah tetap pakai angka lama yang basi.
+  // Dipanggil sekali tiap aplikasi dibuka (lihat AppStore.initialize).
+  async recalculateActiveTargets(): Promise<void> {
+    const activeGoals = await this.getActive();
+    const today = new Date();
+
+    for (const goal of activeGoals) {
+      const remainingDays = differenceInCalendarDays(new Date(goal.deadline), today) + 1;
+      const dailyTargetRaw =
+        remainingDays > 0 ? goal.remainingAmount / remainingDays : goal.remainingAmount;
+      const dailyTarget = roundDailyTarget(dailyTargetRaw);
+      const weeklyTarget = roundDailyTarget(dailyTargetRaw * 7);
+      const monthlyTarget = roundDailyTarget(dailyTargetRaw * 30);
+
+      // Hanya tulis ke DB kalau memang berubah, supaya tidak boros write tiap buka app
+      if (
+        goal.dailyTarget !== dailyTarget ||
+        goal.weeklyTarget !== weeklyTarget ||
+        goal.monthlyTarget !== monthlyTarget
+      ) {
+        await db.goals.update(goal.id, {
+          dailyTarget,
+          weeklyTarget,
+          monthlyTarget,
+          updatedAt: new Date(),
+        });
+      }
+    }
+  }
+
   async markCompleted(id: string): Promise<void> {
     const now = new Date();
     await db.goals.update(id, {

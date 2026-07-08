@@ -6,6 +6,9 @@ import { Menu, Bell, Search, Plus } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { CommandCenter } from './CommandCenter';
 import { useAppStore, useCommandCenterStore } from '../stores';
+import { useGoalStore } from '../stores/GoalStore';
+import { useDashboardStore } from '../stores/DashboardStore';
+import { goalRepository } from '../repositories/GoalRepository';
 import { QuickAddModal } from '../modals/QuickAddModal';
 import { GoalModal } from '../modals/GoalModal';
 
@@ -20,6 +23,25 @@ export function Layout({ children }: LayoutProps) {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [quickAddPrefillAmount, setQuickAddPrefillAmount] = useState<number | undefined>(undefined);
   const [goalPrefillTitle, setGoalPrefillTitle] = useState<string | undefined>(undefined);
+
+  // Kalau aplikasi dibiarkan terbuka lewat tengah malam, tanggal berubah tapi
+  // dailyTarget belum ter-refresh. Cek berkala & hitung ulang kalau harinya sudah ganti.
+  useEffect(() => {
+    let lastCheckedDate = new Date().toDateString();
+
+    const checkDateChange = async () => {
+      const today = new Date().toDateString();
+      if (today !== lastCheckedDate) {
+        lastCheckedDate = today;
+        await goalRepository.recalculateActiveTargets();
+        await useGoalStore.getState().fetchActiveGoals();
+        await useDashboardStore.getState().refreshAll();
+      }
+    };
+
+    const interval = setInterval(checkDateChange, 15 * 60 * 1000); // cek tiap 15 menit
+    return () => clearInterval(interval);
+  }, []);
 
   // Global keyboard shortcut for Command Center
   useEffect(() => {
