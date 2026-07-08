@@ -7,6 +7,12 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.3.0] - 2026-07-08
+### Added
+- **PWA (Progressive Web App)** — aplikasi sekarang bisa di-*install* ke Home Screen (HP) atau desktop, dan tetap bisa dibuka meski koneksi internet terputus (offline-capable untuk halaman & tampilan; data tetap tersimpan lokal di IndexedDB seperti sebelumnya)
+- Ikon aplikasi resmi LifeOS (favicon, ikon Android, ikon iOS/apple-touch-icon, maskable icon)
+- Auto-update: service worker otomatis mengambil versi terbaru saat ada deploy baru
+
 ## [1.2.0] - 2026-07-08
 ### Fixed
 - **Analytics kini pakai data asli**, bukan mock — grafik mingguan, distribusi kategori, streak, achievement, dan skor kesehatan finansial dihitung dari data user sesungguhnya
