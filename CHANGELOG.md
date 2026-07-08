@@ -7,6 +7,20 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.5.0] - 2026-07-08
+### Added
+- **Universal Search & Command Engine** (CTRL+K / CMD+K) — command palette yang sudah ada sebelumnya kini ditingkatkan jadi pencarian universal:
+  - Mencari **Goals, Wallet, Saving History (transaksi), Achievement, Life Journey** langsung dari database Dexie (bukan dari state UI), sehingga hasil selalu lengkap & konsisten
+  - **Fuzzy search dengan toleransi typo** (berbasis Levenshtein distance) — salah ketik sedikit tetap ketemu
+  - **Natural Command** — ketik langsung tanpa buka menu, contoh: `tambah dana 50rb`, `tambah target Laptop`, `backup data`, `buka wallet`, `export pdf`
+  - **Ranking berdasarkan frekuensi pemakaian** — command yang sering dipakai naik ke atas, disimpan permanen di perangkat
+  - Aksi backup/export bisa langsung dijalankan dari command palette tanpa pindah halaman
+  - Error handling: jika sebagian data gagal dimuat, pencarian tetap bisa dipakai dengan command statis
+  - Peningkatan aksesibilitas: ARIA label, role dialog/listbox/option, dan dukungan *reduce motion*
+
+### Notes
+- Cakupan pencarian disesuaikan dengan data yang benar-benar ada di LifeOS versi ini (Goals, Wallet, Saving History, Achievement, Life Journey). Item seperti Notification/Category/Tags belum jadi entitas tersendiri di database sehingga belum diindeks terpisah.
+
 ## [1.4.0] - 2026-07-08
 ### Added
 - **Notifikasi update otomatis** — saat ada versi baru LifeOS ter-deploy, pengguna yang sudah meng-install aplikasi akan melihat notifikasi kecil "Update Tersedia" dengan tombol "Perbarui Sekarang"

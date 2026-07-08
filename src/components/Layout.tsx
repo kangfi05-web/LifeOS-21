@@ -18,6 +18,8 @@ export function Layout({ children }: LayoutProps) {
   const { toggle: toggleCommandCenter } = useCommandCenterStore();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [quickAddPrefillAmount, setQuickAddPrefillAmount] = useState<number | undefined>(undefined);
+  const [goalPrefillTitle, setGoalPrefillTitle] = useState<string | undefined>(undefined);
 
   // Global keyboard shortcut for Command Center
   useEffect(() => {
@@ -140,22 +142,40 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Quick Add Modal */}
       <AnimatePresence>
-        {showQuickAdd && <QuickAddModal onClose={() => setShowQuickAdd(false)} />}
+        {showQuickAdd && (
+          <QuickAddModal
+            initialAmount={quickAddPrefillAmount}
+            onClose={() => {
+              setShowQuickAdd(false);
+              setQuickAddPrefillAmount(undefined);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       {/* Goal Modal */}
       <AnimatePresence>
         {showGoalModal && (
           <GoalModal
-            onClose={() => setShowGoalModal(false)}
+            initialTitle={goalPrefillTitle}
+            onClose={() => {
+              setShowGoalModal(false);
+              setGoalPrefillTitle(undefined);
+            }}
           />
         )}
       </AnimatePresence>
 
       {/* Command Center */}
       <CommandCenter
-        onOpenGoalModal={() => setShowGoalModal(true)}
-        onOpenQuickAdd={() => setShowQuickAdd(true)}
+        onOpenGoalModal={(title) => {
+          setGoalPrefillTitle(title);
+          setShowGoalModal(true);
+        }}
+        onOpenQuickAdd={(amount) => {
+          setQuickAddPrefillAmount(amount);
+          setShowQuickAdd(true);
+        }}
       />
     </div>
   );

@@ -12,20 +12,23 @@ import { useDashboardStore } from '../stores';
 
 interface QuickAddModalProps {
   goal?: Goal;
+  initialAmount?: number;
   onClose: () => void;
 }
 
-export function QuickAddModal({ goal, onClose }: QuickAddModalProps) {
+export function QuickAddModal({ goal, initialAmount, onClose }: QuickAddModalProps) {
   const { activeGoals } = useGoalStore();
   const { wallets } = useWalletStore();
   const { refreshAll } = useDashboardStore();
 
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(goal || null);
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<number>(initialAmount ?? 0);
   const [selectedWallet, setSelectedWallet] = useState<string>('');
   const [note, setNote] = useState('');
-  const [customAmount, setCustomAmount] = useState<string>('');
-  const [isCustom, setIsCustom] = useState(false);
+  const [customAmount, setCustomAmount] = useState<string>(
+    initialAmount ? initialAmount.toString() : ''
+  );
+  const [isCustom, setIsCustom] = useState(!!initialAmount);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 

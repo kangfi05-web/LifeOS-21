@@ -8,7 +8,7 @@ export interface CommandAction {
   label: string;
   description?: string;
   icon: string;
-  category: 'navigation' | 'create' | 'edit' | 'report' | 'backup' | 'tools' | 'settings';
+  category: 'navigation' | 'create' | 'edit' | 'report' | 'backup' | 'tools' | 'settings' | 'data' | 'smart';
   shortcut?: string;
   action: () => void;
   keywords?: string[];
@@ -20,6 +20,7 @@ interface CommandCenterState {
   selectedIndex: number;
   recentActions: string[];
   favoriteActions: string[];
+  usageCount: Record<string, number>;
 
   // Actions
   open: () => void;
@@ -33,6 +34,7 @@ interface CommandCenterState {
   clearRecent: () => void;
   toggleFavorite: (actionId: string) => void;
   isFavorite: (actionId: string) => boolean;
+  getUsageCount: (actionId: string) => number;
 }
 
 export const useCommandCenterStore = create<CommandCenterState>()(
@@ -43,6 +45,7 @@ export const useCommandCenterStore = create<CommandCenterState>()(
       selectedIndex: 0,
       recentActions: [],
       favoriteActions: [],
+      usageCount: {},
 
       open: () => set({ isOpen: true, searchQuery: '', selectedIndex: 0 }),
 
@@ -72,10 +75,13 @@ export const useCommandCenterStore = create<CommandCenterState>()(
       },
 
       addToRecent: (actionId) => {
-        const { recentActions } = get();
+        const { recentActions, usageCount } = get();
         const filtered = recentActions.filter((id) => id !== actionId);
         const newRecent = [actionId, ...filtered].slice(0, 10);
-        set({ recentActions: newRecent });
+        set({
+          recentActions: newRecent,
+          usageCount: { ...usageCount, [actionId]: (usageCount[actionId] ?? 0) + 1 },
+        });
       },
 
       clearRecent: () => set({ recentActions: [] }),
@@ -90,12 +96,15 @@ export const useCommandCenterStore = create<CommandCenterState>()(
       },
 
       isFavorite: (actionId) => get().favoriteActions.includes(actionId),
+
+      getUsageCount: (actionId) => get().usageCount[actionId] ?? 0,
     }),
     {
       name: 'lifeos-command-center',
       partialize: (state) => ({
         recentActions: state.recentActions,
         favoriteActions: state.favoriteActions,
+        usageCount: state.usageCount,
       }),
     }
   )

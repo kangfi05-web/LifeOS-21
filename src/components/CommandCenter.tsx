@@ -1,6 +1,6 @@
-// Command Center - Global Command Palette
+// Command Center - Universal Search & Command Engine
 
-import { useEffect, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -25,17 +25,21 @@ import {
   Sun,
   Globe,
   Command,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { useCommandCenterStore, CommandAction } from '../stores/CommandCenterStore';
 import { useAppStore } from '../stores';
-import { useGoalStore } from '../stores/GoalStore';
-import { useWalletStore } from '../stores/WalletStore';
 import { cn } from '../utils/cn';
 import { useTheme } from '../design-system';
+import { bestFieldScore } from '../utils/fuzzySearch';
+import { parseNaturalCommand } from '../utils/commandParser';
+import { buildSearchIndex, SearchDataItem } from '../utils/searchIndex';
+import { downloadBackupFile } from '../utils/backupExport';
 
 interface CommandCenterProps {
-  onOpenGoalModal: () => void;
-  onOpenQuickAdd: () => void;
+  onOpenGoalModal: (initialTitle?: string) => void;
+  onOpenQuickAdd: (initialAmount?: number) => void;
   onOpenWalletModal?: () => void;
 }
 
@@ -53,19 +57,45 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
     addToRecent,
     toggleFavorite,
     isFavorite,
+    getUsageCount,
   } = useCommandCenterStore();
 
   const { setCurrentPage } = useAppStore();
-  const { activeGoals } = useGoalStore();
-  const { wallets } = useWalletStore();
   const { setTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input when opened
+  // Data index (dari Dexie via repository), dimuat saat palette dibuka
+  const [dataItems, setDataItems] = useState<SearchDataItem[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Focus input & load data index saat command palette dibuka
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (!isOpen) return;
+
+    inputRef.current?.focus();
+
+    let cancelled = false;
+    setDataLoading(true);
+    setDataError(null);
+
+    buildSearchIndex()
+      .then((items) => {
+        if (!cancelled) setDataItems(items);
+      })
+      .catch(() => {
+        if (!cancelled) setDataError('Sebagian data pencarian gagal dimuat. Perintah tetap bisa dipakai.');
+      })
+      .finally(() => {
+        if (!cancelled) setDataLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   // Define all available commands
@@ -240,11 +270,13 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
       {
         id: 'backup-export',
         label: 'Export Data',
-        description: 'Simpan backup data',
+        description: 'Unduh backup semua data (.json)',
         icon: 'Download',
         category: 'backup',
         action: () => {
-          setCurrentPage('settings');
+          downloadBackupFile().catch(() => {
+            // Kegagalan backup tidak boleh membuat command palette crash
+          });
         },
         keywords: ['export', 'backup', 'simpan', 'save'],
       },
@@ -272,82 +304,119 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
       },
     ];
 
-    // Add dynamic goal commands
-    activeGoals.forEach((goal) => {
-      commands.push({
-        id: `goal-${goal.id}`,
-        label: goal.title,
-        description: `Target: ${Math.round(goal.progress)}% selesai`,
-        icon: 'Target',
-        category: 'navigation',
-        action: () => setCurrentPage('goals'),
-        keywords: [goal.title, goal.category],
-      });
-    });
-
-    // Add dynamic wallet commands
-    wallets.forEach((wallet) => {
-      commands.push({
-        id: `wallet-${wallet.id}`,
-        label: wallet.name,
-        description: 'Saldo: ' + wallet.balance.toLocaleString('id-ID'),
-        icon: 'Wallet',
-        category: 'navigation',
-        action: () => setCurrentPage('wallet'),
-        keywords: [wallet.name, wallet.type],
-      });
-    });
-
     return commands;
-  }, [activeGoals, wallets, setCurrentPage, close, onOpenGoalModal, onOpenQuickAdd, setTheme]);
+  }, [setCurrentPage, close, onOpenGoalModal, onOpenQuickAdd, setTheme]);
 
-  // Fuzzy search filter
+  // Ubah item data (goal, wallet, transaksi, achievement, journey) dari Dexie
+  // jadi CommandAction, supaya bisa dicari & dinavigasi bersama command statis.
+  const dataCommands: CommandAction[] = useMemo(() => {
+    const iconByEntity: Record<SearchDataItem['entityType'], string> = {
+      goal: 'Target',
+      wallet: 'Wallet',
+      transaction: 'ArrowRightLeft',
+      achievement: 'Trophy',
+      journey: 'Compass',
+    };
+
+    return dataItems.map((item) => ({
+      id: item.id,
+      label: item.title,
+      description: item.subtitle,
+      icon: iconByEntity[item.entityType],
+      category: 'data' as const,
+      action: () => setCurrentPage(item.page),
+      keywords: item.keywords,
+    }));
+  }, [dataItems, setCurrentPage]);
+
+  // Command hasil parsing Natural Language ("tambah dana 50000", dsb),
+  // ditampilkan sebagai satu hasil instan paling atas jika query cocok pola.
+  const smartCommand: CommandAction | null = useMemo(() => {
+    const parsed = parseNaturalCommand(searchQuery);
+    if (!parsed) return null;
+
+    let action: () => void;
+    switch (parsed.type) {
+      case 'add-saving':
+        action = () => onOpenQuickAdd(parsed.payload?.amount);
+        break;
+      case 'add-goal':
+        action = () => onOpenGoalModal(parsed.payload?.title);
+        break;
+      case 'backup-export':
+        action = () => {
+          downloadBackupFile().catch(() => {});
+        };
+        break;
+      case 'backup-restore':
+        action = () => setCurrentPage('settings');
+        break;
+      case 'export-report':
+        action = () => setCurrentPage('analytics');
+        break;
+      case 'navigate':
+        action = () => setCurrentPage(parsed.payload?.page ?? 'dashboard');
+        break;
+      default:
+        action = () => {};
+    }
+
+    return {
+      id: `smart-${parsed.type}`,
+      label: parsed.label,
+      description: 'Perintah cepat dari yang Anda ketik',
+      icon: 'Zap',
+      category: 'smart',
+      action,
+      keywords: [],
+    };
+  }, [searchQuery, onOpenQuickAdd, onOpenGoalModal, setCurrentPage]);
+
+  // Gabungkan command statis + hasil data dari Dexie
+  const combinedCommands = useMemo(
+    () => [...allCommands, ...dataCommands],
+    [allCommands, dataCommands]
+  );
+
+  // Fuzzy search dengan skor relevansi (typo-tolerant)
   const filteredCommands = useMemo(() => {
-    if (!searchQuery.trim()) return allCommands;
+    if (!searchQuery.trim()) {
+      return combinedCommands.map((cmd) => ({ cmd, score: 0 }));
+    }
 
-    const query = searchQuery.toLowerCase();
-    return allCommands.filter((cmd) => {
-      // Check label
-      if (cmd.label.toLowerCase().includes(query)) return true;
-      // Check description
-      if (cmd.description?.toLowerCase().includes(query)) return true;
-      // Check keywords
-      if (cmd.keywords?.some((kw) => kw.toLowerCase().includes(query))) return true;
-      // Check category
-      if (cmd.category.toLowerCase().includes(query)) return true;
+    const query = searchQuery.trim();
+    const results: { cmd: CommandAction; score: number }[] = [];
 
-      // Fuzzy match - check if characters appear in order
-      let queryIndex = 0;
-      for (const char of cmd.label.toLowerCase()) {
-        if (char === query[queryIndex]) {
-          queryIndex++;
-          if (queryIndex === query.length) return true;
-        }
-      }
+    for (const cmd of combinedCommands) {
+      const score = bestFieldScore(query, [cmd.label, cmd.description, cmd.category, ...(cmd.keywords ?? [])]);
+      if (score > 0) results.push({ cmd, score });
+    }
 
-      return false;
-    });
-  }, [allCommands, searchQuery]);
+    return results;
+  }, [combinedCommands, searchQuery]);
 
-  // Sort: favorites first, then recent, then rest
+  // Urutkan: favorit dulu, lalu recent, sisanya diranking berdasarkan
+  // skor relevansi pencarian + frekuensi pemakaian (semakin sering dipakai, semakin atas)
   const sortedCommands = useMemo(() => {
-    const favorites = filteredCommands.filter((cmd) => favoriteActions.includes(cmd.id));
+    const favorites = filteredCommands.filter(({ cmd }) => favoriteActions.includes(cmd.id));
     const recents = filteredCommands.filter(
-      (cmd) => recentActions.includes(cmd.id) && !favoriteActions.includes(cmd.id)
+      ({ cmd }) => recentActions.includes(cmd.id) && !favoriteActions.includes(cmd.id)
     );
     const others = filteredCommands.filter(
-      (cmd) => !recentActions.includes(cmd.id) && !favoriteActions.includes(cmd.id)
+      ({ cmd }) => !recentActions.includes(cmd.id) && !favoriteActions.includes(cmd.id)
     );
 
-    // Sort recents by order in recentActions
-    recents.sort((a, b) => {
-      const aIndex = recentActions.indexOf(a.id);
-      const bIndex = recentActions.indexOf(b.id);
-      return aIndex - bIndex;
+    recents.sort((a, b) => recentActions.indexOf(a.cmd.id) - recentActions.indexOf(b.cmd.id));
+    others.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return getUsageCount(b.cmd.id) - getUsageCount(a.cmd.id);
     });
 
-    return [...favorites, ...recents, ...others];
-  }, [filteredCommands, favoriteActions, recentActions]);
+    const ranked = [...favorites, ...recents, ...others].map(({ cmd }) => cmd).slice(0, 50);
+
+    // Smart command (hasil natural language parsing) selalu tampil paling atas
+    return smartCommand ? [smartCommand, ...ranked] : ranked;
+  }, [filteredCommands, favoriteActions, recentActions, getUsageCount, smartCommand]);
 
   // Category groups
   const groupedCommands = useMemo(() => {
@@ -430,6 +499,8 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
       Moon: <Moon className="w-5 h-5" />,
       Globe: <Globe className="w-5 h-5" />,
       TrendingUp: <TrendingUp className="w-5 h-5" />,
+      Zap: <Zap className="w-5 h-5" />,
+      AlertCircle: <AlertCircle className="w-5 h-5" />,
     };
     return icons[iconName] || <Command className="w-5 h-5" />;
   };
@@ -443,6 +514,8 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
       backup: 'Backup',
       tools: 'Alat',
       settings: 'Pengaturan',
+      data: 'Data Anda',
+      smart: 'Aksi Cepat',
     };
     return labels[category] || category;
   };
@@ -455,9 +528,10 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.15 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
         className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4"
         onClick={close}
+        role="presentation"
       >
         {/* Backdrop */}
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
@@ -467,9 +541,12 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
           initial={{ opacity: 0, scale: 0.95, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: 'easeOut' }}
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-2xl bg-surface/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Universal Search & Command Center"
         >
           {/* Search Input */}
           <div className="flex items-center gap-3 p-4 border-b border-white/5">
@@ -480,9 +557,13 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Cari perintah atau halaman..."
+              placeholder="Cari data, halaman, atau ketik perintah (mis. 'tambah dana 50rb')..."
               className="flex-1 bg-transparent text-lg text-white placeholder:text-base-400 focus:outline-none"
-              aria-label="Search commands"
+              aria-label="Cari perintah, halaman, atau data"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="command-center-results"
+              aria-autocomplete="list"
             />
             <div className="flex items-center gap-1 text-xs text-base-400">
               <kbd className="px-2 py-1 bg-white/5 rounded">ESC</kbd>
@@ -490,13 +571,27 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
             </div>
           </div>
 
+          {dataError && (
+            <div className="flex items-center gap-2 px-4 py-2 text-xs text-warning bg-warning/10 border-b border-white/5">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{dataError}</span>
+            </div>
+          )}
+
           {/* Results */}
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div
+            id="command-center-results"
+            role="listbox"
+            aria-label="Hasil pencarian"
+            className="max-h-[60vh] overflow-y-auto"
+          >
             {sortedCommands.length === 0 ? (
               <div className="p-8 text-center">
                 <Search className="w-12 h-12 mx-auto mb-4 text-base-400" />
                 <p className="text-lg font-medium mb-1">Tidak ada hasil</p>
-                <p className="text-sm text-base-400">Coba gunakan kata kunci lain</p>
+                <p className="text-sm text-base-400">
+                  {dataLoading ? 'Sedang memuat data...' : 'Coba gunakan kata kunci lain'}
+                </p>
               </div>
             ) : (
               <div className="p-2">
@@ -515,9 +610,11 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
                           key={cmd.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.02 }}
+                          transition={{ delay: prefersReducedMotion ? 0 : idx * 0.02 }}
                           onClick={() => handleSelectCommand(cmd)}
                           onMouseEnter={() => useCommandCenterStore.getState().setSelectedIndex(globalIndex)}
+                          role="option"
+                          aria-selected={isSelected}
                           className={cn(
                             'w-full flex items-center gap-3 p-3 rounded-xl transition-all',
                             isSelected

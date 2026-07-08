@@ -10,10 +10,11 @@ import { GOAL_CATEGORIES } from '../constants';
 
 interface GoalModalProps {
   goal?: Goal | null;
+  initialTitle?: string;
   onClose: () => void;
 }
 
-export function GoalModal({ goal, onClose }: GoalModalProps) {
+export function GoalModal({ goal, initialTitle, onClose }: GoalModalProps) {
   const { createGoal, updateGoal } = useGoalStore();
   const isEditing = !!goal;
 
@@ -21,7 +22,7 @@ export function GoalModal({ goal, onClose }: GoalModalProps) {
   const [loading, setLoading] = useState(false);
 
   // Form State
-  const [title, setTitle] = useState(goal?.title || '');
+  const [title, setTitle] = useState(goal?.title || initialTitle || '');
   const [category, setCategory] = useState<GoalCategory>(goal?.category || 'savings');
   const [description, setDescription] = useState(goal?.description || '');
   const [targetAmount, setTargetAmount] = useState(goal?.targetAmount?.toString() || '');
