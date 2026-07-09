@@ -7,6 +7,11 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.10.0] - 2026-07-08
+### Fixed
+- **Grafik "Progress Mingguan" di Dashboard kini pakai data asli**, bukan sample hardcode `[80, 100, 45, 90, 30, 60, 75]` — dihitung dari tabel `dailyProgress` (target vs realisasi nabung tiap hari), sama seperti perbaikan Analytics di v1.2.0
+- Hari yang belum terjadi minggu ini ditampilkan kosong/redup (bukan angka acak), dan hari ini ditandai warna beda di label
+
 ## [1.9.0] - 2026-07-08
 ### Added
 - **Status detail cicilan bulanan** — pelengkap fitur Mode Cicilan Bulanan (v1.8.0):

@@ -31,6 +31,7 @@ import { GoalModal } from '../modals/GoalModal';
 import { Goal } from '../types';
 import { insightService, Insight } from '../services/InsightService';
 import { InstallmentStatusBar } from '../components/InstallmentStatusBar';
+import { getWeeklyProgressData, WeeklyProgressDay } from '../utils/weeklyProgress';
 
 export function Dashboard() {
   const { refreshAll, summary, dailySummary, priorityGoals, coachInsight, loading } = useDashboardStore();
@@ -526,25 +527,55 @@ function EmptyState({ onCreateGoal }: { onCreateGoal: () => void }) {
 }
 
 function WeeklyProgressChart() {
-  const days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-  const data = [80, 100, 45, 90, 30, 60, 75]; // Sample data
+  const [weekData, setWeekData] = useState<WeeklyProgressDay[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWeeklyProgressData().then((data) => {
+      if (!cancelled) setWeekData(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!weekData) {
+    return (
+      <div className="flex items-end gap-2 h-24 animate-pulse">
+        {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day) => (
+          <div key={day} className="flex-1 flex flex-col items-center gap-1">
+            <div className="w-full h-8 rounded-t-md bg-white/5" />
+            <span className="text-xs text-base-400">{day}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-end gap-2 h-24">
-      {days.map((day, i) => (
-        <div key={day} className="flex-1 flex flex-col items-center gap-1">
+      {weekData.map((d) => (
+        <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
           <div
-            className="w-full rounded-t-md transition-all duration-300"
+            className={`w-full rounded-t-md transition-all duration-300 ${
+              d.isFuture ? 'bg-white/5' : ''
+            }`}
             style={{
-              height: `${data[i]}%`,
-              background: data[i] >= 80
-                ? 'linear-gradient(to top, #10B981, #22C55E)'
-                : data[i] >= 50
-                  ? 'linear-gradient(to top, #3B82F6, #0EA5E9)'
-                  : 'linear-gradient(to top, #F59E0B, #FBBF24)',
+              height: `${Math.max(d.isFuture ? 4 : d.percent > 0 ? d.percent : 4, 4)}%`,
+              background: d.isFuture
+                ? undefined
+                : d.percent >= 80
+                  ? 'linear-gradient(to top, #10B981, #22C55E)'
+                  : d.percent >= 50
+                    ? 'linear-gradient(to top, #3B82F6, #0EA5E9)'
+                    : d.percent > 0
+                      ? 'linear-gradient(to top, #F59E0B, #FBBF24)'
+                      : 'rgba(255,255,255,0.05)',
             }}
           />
-          <span className="text-xs text-base-400">{day}</span>
+          <span className={`text-xs ${d.isToday ? 'text-primary-400 font-medium' : 'text-base-400'}`}>
+            {d.label}
+          </span>
         </div>
       ))}
     </div>
