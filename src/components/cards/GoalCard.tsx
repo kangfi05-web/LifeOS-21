@@ -9,8 +9,9 @@ import { Badge, PriorityBadge, StatusBadge } from '../ui/Badge';
 import { CircularProgress } from '../ui/Progress';
 import { Button } from '../ui/Button';
 import type { Goal } from '../../types';
-import { formatCurrency, getDaysRemaining, calculateInstallmentInfo } from '../../utils/calculations';
+import { formatCurrency, getDaysRemaining } from '../../utils/calculations';
 import { GOAL_CATEGORIES } from '../../constants';
+import { InstallmentStatusBar } from '../InstallmentStatusBar';
 
 // ============================================
 // GOAL CARD
@@ -95,21 +96,6 @@ export function GoalCard({
 
           {/* Badges */}
           <div className="absolute top-3 right-3 flex items-center gap-2">
-            {goal.installmentMonths ? (
-              <Badge variant="outline" size="sm">
-                Bulan ke-
-                {
-                  calculateInstallmentInfo(
-                    goal.startDate,
-                    goal.deadline,
-                    goal.targetAmount,
-                    goal.remainingAmount,
-                    goal.installmentMonths
-                  ).currentMonth
-                }
-                /{goal.installmentMonths}
-              </Badge>
-            ) : null}
             <PriorityBadge priority={goal.priority} size="sm" />
           </div>
 
@@ -239,6 +225,13 @@ export function GoalCard({
               </p>
             </div>
           </div>
+
+          {/* Status Cicilan Bulanan (kalau goal ini pakai mode cicilan) */}
+          {goal.installmentMonths ? (
+            <div className="bg-white/5 rounded-lg p-3 mb-4">
+              <InstallmentStatusBar goal={goal} compact />
+            </div>
+          ) : null}
 
           {/* Add Button */}
           {onAdd && (

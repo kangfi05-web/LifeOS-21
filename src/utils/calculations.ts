@@ -58,6 +58,14 @@ export function getTotalDays(startDate: Date | string, deadline: Date | string):
   return differenceInCalendarDays(end, start) + 1;
 }
 
+export type InstallmentMonthStatus = 'paid' | 'overdue' | 'current' | 'upcoming';
+
+export interface InstallmentMonthDetail {
+  month: number; // ke berapa (1-indexed)
+  status: InstallmentMonthStatus;
+  dueDate: Date; // batas bayar cicilan bulan ini
+}
+
 export interface InstallmentInfo {
   currentMonth: number; // bulan ke berapa sekarang (1-indexed)
   totalMonths: number;
@@ -69,6 +77,9 @@ export interface InstallmentInfo {
   daysLeftInPeriod: number;
   dailyTarget: number; // remainingThisPeriod disebar ke daysLeftInPeriod
   isBehindSchedule: boolean;
+  monthsPaid: number; // jumlah bulan yang SUDAH lunas penuh
+  monthsRemaining: number; // sisa bulan yang belum lunas (totalMonths - monthsPaid)
+  monthsBreakdown: InstallmentMonthDetail[]; // status tiap bulan, lengkap 1..totalMonths
 }
 
 // Hitung info cicilan bulanan untuk goal bertipe installment (mis. hutang N bulan).
@@ -104,6 +115,26 @@ export function calculateInstallmentInfo(
   const dailyTarget =
     daysLeftInPeriod > 0 ? remainingThisPeriod / daysLeftInPeriod : remainingThisPeriod;
 
+  // Berapa bulan yang SUDAH lunas penuh (dihitung dari total dana terkumpul, murni angka,
+  // tidak peduli itu dibayar cepat/lambat — yang penting cicilan bulan itu sudah tertutup)
+  const monthsPaid = Math.min(totalMonths, Math.floor((totalCollected + 0.01) / monthlyInstallment));
+  const monthsRemaining = totalMonths - monthsPaid;
+
+  const monthsBreakdown: InstallmentMonthDetail[] = [];
+  for (let m = 1; m <= totalMonths; m++) {
+    let status: InstallmentMonthStatus;
+    if (m <= monthsPaid) {
+      status = 'paid';
+    } else if (m < currentMonth) {
+      status = 'overdue';
+    } else if (m === currentMonth) {
+      status = 'current';
+    } else {
+      status = 'upcoming';
+    }
+    monthsBreakdown.push({ month: m, status, dueDate: addMonths(start, m) });
+  }
+
   return {
     currentMonth,
     totalMonths,
@@ -115,6 +146,9 @@ export function calculateInstallmentInfo(
     daysLeftInPeriod,
     dailyTarget: roundDailyTarget(dailyTarget),
     isBehindSchedule: totalCollected < dueByNow - monthlyInstallment * 0.01,
+    monthsPaid,
+    monthsRemaining,
+    monthsBreakdown,
   };
 }
 

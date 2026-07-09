@@ -7,6 +7,14 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.9.0] - 2026-07-08
+### Added
+- **Status detail cicilan bulanan** — pelengkap fitur Mode Cicilan Bulanan (v1.8.0):
+  - Setiap target cicilan sekarang menampilkan **titik status per bulan** (✓ lunas hijau, biru = bulan berjalan, ⚠️ merah = tertunggak, abu-abu = belum jatuh tempo)
+  - Ringkasan otomatis seperti **"Lunas 2 dari 6 bulan • tersisa 4 bulan lagi"**, dan kalau ada tunggakan langsung ditandai **"ada tunggakan, sedang dikejar"**
+  - **Widget baru "Cicilan Bulanan" di Dashboard** — menampilkan ringkasan semua target cicilan aktif sekaligus, tanpa perlu buka halaman Goals
+  - Status per bulan dihitung murni dari total dana terkumpul (bukan dari histori pembayaran manual), jadi tetap akurat walau user bayar lebih cepat/lambat dari jadwal
+
 ## [1.8.0] - 2026-07-08
 ### Added
 - **Mode Cicilan Bulanan** untuk target — khusus buat hutang/kewajiban yang dibayar rutin tiap bulan selama beberapa bulan (misal hutang 6 bulan):

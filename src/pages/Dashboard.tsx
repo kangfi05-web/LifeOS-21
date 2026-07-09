@@ -22,6 +22,7 @@ import {
   CheckCircle,
   Star,
   Zap,
+  CreditCard,
 } from 'lucide-react';
 import { useDashboardStore, useGoalStore, useAchievementStore, useAppStore } from '../stores';
 import { formatCurrency, getGreeting, formatDate, getRandomMotivationalQuote } from '../utils/calculations';
@@ -29,6 +30,7 @@ import { QuickAddModal } from '../modals/QuickAddModal';
 import { GoalModal } from '../modals/GoalModal';
 import { Goal } from '../types';
 import { insightService, Insight } from '../services/InsightService';
+import { InstallmentStatusBar } from '../components/InstallmentStatusBar';
 
 export function Dashboard() {
   const { refreshAll, summary, dailySummary, priorityGoals, coachInsight, loading } = useDashboardStore();
@@ -245,6 +247,36 @@ export function Dashboard() {
                     {coachInsight.actionLabel}
                   </motion.button>
                 )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Cicilan Bulanan (hanya muncul kalau ada target bermode cicilan) */}
+          {priorityGoals.some((g) => g.installmentMonths) && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.32 }}
+              className="bg-surface rounded-2xl border border-white/5 p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <CreditCard className="w-5 h-5 text-primary-400" />
+                <h3 className="font-semibold">Cicilan Bulanan</h3>
+              </div>
+
+              <div className="space-y-4">
+                {priorityGoals
+                  .filter((g) => g.installmentMonths)
+                  .map((g) => (
+                    <div
+                      key={g.id}
+                      className="p-3 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-colors"
+                      onClick={() => setCurrentPage('goals')}
+                    >
+                      <p className="font-medium text-sm mb-2 truncate">{g.title}</p>
+                      <InstallmentStatusBar goal={g} compact />
+                    </div>
+                  ))}
               </div>
             </motion.div>
           )}
