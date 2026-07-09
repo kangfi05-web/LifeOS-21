@@ -62,6 +62,10 @@ export interface Goal {
   color?: string;
   notes?: string;
   walletId?: string;
+  // Mode cicilan bulanan (mis. hutang yang dibayar tiap bulan selama N bulan).
+  // Kalau diisi, dailyTarget dihitung mengejar cicilan BULAN BERJALAN saja,
+  // bukan disebar ke seluruh durasi target.
+  installmentMonths?: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

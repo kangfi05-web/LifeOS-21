@@ -9,7 +9,7 @@ import { Badge, PriorityBadge, StatusBadge } from '../ui/Badge';
 import { CircularProgress } from '../ui/Progress';
 import { Button } from '../ui/Button';
 import type { Goal } from '../../types';
-import { formatCurrency, getDaysRemaining } from '../../utils/calculations';
+import { formatCurrency, getDaysRemaining, calculateInstallmentInfo } from '../../utils/calculations';
 import { GOAL_CATEGORIES } from '../../constants';
 
 // ============================================
@@ -95,6 +95,21 @@ export function GoalCard({
 
           {/* Badges */}
           <div className="absolute top-3 right-3 flex items-center gap-2">
+            {goal.installmentMonths ? (
+              <Badge variant="outline" size="sm">
+                Bulan ke-
+                {
+                  calculateInstallmentInfo(
+                    goal.startDate,
+                    goal.deadline,
+                    goal.targetAmount,
+                    goal.remainingAmount,
+                    goal.installmentMonths
+                  ).currentMonth
+                }
+                /{goal.installmentMonths}
+              </Badge>
+            ) : null}
             <PriorityBadge priority={goal.priority} size="sm" />
           </div>
 

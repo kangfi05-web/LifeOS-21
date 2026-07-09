@@ -1,6 +1,6 @@
 // Utility Functions
 
-import { format, formatDistanceToNow, differenceInDays, differenceInCalendarDays, isBefore, startOfDay, addDays } from 'date-fns';
+import { format, formatDistanceToNow, differenceInDays, differenceInCalendarDays, differenceInMonths, isBefore, startOfDay, addDays, addMonths } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 
 // Format Currency - Indonesian Rupiah
@@ -56,6 +56,66 @@ export function getTotalDays(startDate: Date | string, deadline: Date | string):
   const start = new Date(startDate);
   const end = new Date(deadline);
   return differenceInCalendarDays(end, start) + 1;
+}
+
+export interface InstallmentInfo {
+  currentMonth: number; // bulan ke berapa sekarang (1-indexed)
+  totalMonths: number;
+  monthlyInstallment: number; // cicilan tetap per bulan
+  totalCollected: number; // total yang sudah dibayar sejak awal
+  dueByNow: number; // seharusnya sudah dibayar sejak awal sampai akhir bulan berjalan
+  remainingThisPeriod: number; // sisa yang harus dikejar sampai akhir bulan berjalan (termasuk tunggakan)
+  periodEndDate: Date; // batas akhir bulan berjalan (jatuh tempo cicilan bulan ini)
+  daysLeftInPeriod: number;
+  dailyTarget: number; // remainingThisPeriod disebar ke daysLeftInPeriod
+  isBehindSchedule: boolean;
+}
+
+// Hitung info cicilan bulanan untuk goal bertipe installment (mis. hutang N bulan).
+// Kunci bedanya dari dailyTarget biasa: kekurangan hanya dikejar dalam SISA HARI
+// BULAN BERJALAN, bukan disebar ke seluruh sisa durasi target.
+export function calculateInstallmentInfo(
+  startDate: Date | string,
+  deadline: Date | string,
+  targetAmount: number,
+  remainingAmount: number,
+  installmentMonths: number
+): InstallmentInfo {
+  const start = startOfDay(new Date(startDate));
+  const end = startOfDay(new Date(deadline));
+  const today = startOfDay(new Date());
+
+  const totalMonths = Math.max(1, installmentMonths);
+  const monthlyInstallment = targetAmount / totalMonths;
+  const totalCollected = Math.max(0, targetAmount - remainingAmount);
+
+  // Bulan ke berapa sekarang, dihitung dari tanggal mulai (anchor ke tanggal, bukan kalender 1-31)
+  const elapsedFullMonths = Math.max(0, differenceInMonths(today, start));
+  const currentMonth = Math.min(totalMonths, elapsedFullMonths + 1);
+
+  // Batas akhir bulan berjalan = tanggal jatuh tempo cicilan ke-currentMonth
+  const periodEndDate = currentMonth >= totalMonths ? end : addMonths(start, currentMonth);
+
+  // Seharusnya sudah terbayar kumulatif sampai akhir bulan berjalan
+  const dueByNow = Math.min(targetAmount, monthlyInstallment * currentMonth);
+  const remainingThisPeriod = Math.max(0, dueByNow - totalCollected);
+
+  const daysLeftInPeriod = Math.max(0, differenceInCalendarDays(periodEndDate, today) + 1);
+  const dailyTarget =
+    daysLeftInPeriod > 0 ? remainingThisPeriod / daysLeftInPeriod : remainingThisPeriod;
+
+  return {
+    currentMonth,
+    totalMonths,
+    monthlyInstallment: roundDailyTarget(monthlyInstallment),
+    totalCollected,
+    dueByNow,
+    remainingThisPeriod,
+    periodEndDate,
+    daysLeftInPeriod,
+    dailyTarget: roundDailyTarget(dailyTarget),
+    isBehindSchedule: totalCollected < dueByNow - monthlyInstallment * 0.01,
+  };
 }
 
 // Calculate daily target

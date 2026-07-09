@@ -7,6 +7,15 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.8.0] - 2026-07-08
+### Added
+- **Mode Cicilan Bulanan** untuk target — khusus buat hutang/kewajiban yang dibayar rutin tiap bulan selama beberapa bulan (misal hutang 6 bulan):
+  - Saat buat target baru, aktifkan toggle "Mode Cicilan Bulanan", isi jumlah bulan (mis. 6) — deadline otomatis terhitung dari tanggal mulai + jumlah bulan
+  - Target harian dihitung **dalam lingkup bulan berjalan saja** (sisa cicilan bulan ini ÷ sisa hari bulan ini), bukan disebar ke seluruh durasi cicilan
+  - Kalau ada bulan yang terlewat/kurang bayar, kekurangannya **otomatis menumpuk** ke bulan berikutnya sampai lunas
+  - Label **"Bulan ke-X dari Y"** muncul otomatis di kartu target dan form, mengikuti tanggal hari ini
+  - Semua perhitungan tetap ter-refresh otomatis (memakai mekanisme catch-up dari v1.7.0)
+
 ## [1.7.0] - 2026-07-08
 ### Fixed
 - **Bug perhitungan target harian (dailyTarget) tidak "mengejar" hari yang terlewat** — sebelumnya, `dailyTarget` cuma dihitung ulang saat ada transaksi nabung masuk. Kalau user tidak menabung sama sekali selama beberapa hari, angka target harian tetap memakai nilai lama (basi), padahal seharusnya naik untuk mengganti hari-hari yang terlewat agar target tetap tercapai di tanggal deadline

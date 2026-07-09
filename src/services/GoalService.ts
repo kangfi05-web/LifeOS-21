@@ -23,6 +23,7 @@ export class GoalService {
     color?: string;
     notes?: string;
     walletId?: string;
+    installmentMonths?: number;
   }): Promise<Goal> {
     const goal = await goalRepository.create({
       ...data,

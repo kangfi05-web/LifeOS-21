@@ -2,18 +2,56 @@
 
 import { db, generateId } from '../database';
 import { Goal, GoalStatus, GoalPriority, GoalCategory } from '../types';
-import { differenceInDays, differenceInCalendarDays, isAfter, isBefore } from 'date-fns';
-import { roundDailyTarget } from '../utils/calculations';
+import { differenceInCalendarDays, isAfter, isBefore } from 'date-fns';
+import { roundDailyTarget, calculateInstallmentInfo } from '../utils/calculations';
 
 export class GoalRepository {
+  // Hitung dailyTarget/weeklyTarget/monthlyTarget, otomatis pakai logika cicilan
+  // bulanan (mengejar dalam lingkup bulan berjalan) kalau goal.installmentMonths diisi,
+  // atau logika biasa (mengejar ke seluruh sisa hari sampai deadline) kalau tidak.
+  private computeTargets(params: {
+    startDate: Date;
+    deadline: Date;
+    targetAmount: number;
+    remainingAmount: number;
+    installmentMonths?: number;
+  }): { dailyTarget: number; weeklyTarget: number; monthlyTarget: number } {
+    if (params.installmentMonths && params.installmentMonths > 0) {
+      const info = calculateInstallmentInfo(
+        params.startDate,
+        params.deadline,
+        params.targetAmount,
+        params.remainingAmount,
+        params.installmentMonths
+      );
+      return {
+        dailyTarget: info.dailyTarget,
+        weeklyTarget: roundDailyTarget(info.dailyTarget * 7),
+        monthlyTarget: info.monthlyInstallment,
+      };
+    }
+
+    const remainingDays = differenceInCalendarDays(new Date(params.deadline), new Date()) + 1;
+    const dailyTargetRaw =
+      remainingDays > 0 ? params.remainingAmount / remainingDays : params.remainingAmount;
+
+    return {
+      dailyTarget: roundDailyTarget(dailyTargetRaw),
+      weeklyTarget: roundDailyTarget(dailyTargetRaw * 7),
+      monthlyTarget: roundDailyTarget(dailyTargetRaw * 30),
+    };
+  }
+
   // Create
   async create(goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt' | 'progress' | 'remainingAmount' | 'dailyTarget' | 'weeklyTarget' | 'monthlyTarget'>): Promise<Goal> {
     const now = new Date();
-    const totalDays = differenceInCalendarDays(new Date(goal.deadline), new Date(goal.startDate)) + 1;
-    const dailyTargetRaw = totalDays > 0 ? goal.targetAmount / totalDays : 0;
-    const dailyTarget = roundDailyTarget(dailyTargetRaw);
-    const weeklyTarget = roundDailyTarget(dailyTargetRaw * 7);
-    const monthlyTarget = roundDailyTarget(dailyTargetRaw * 30);
+    const { dailyTarget, weeklyTarget, monthlyTarget } = this.computeTargets({
+      startDate: new Date(goal.startDate),
+      deadline: new Date(goal.deadline),
+      targetAmount: goal.targetAmount,
+      remainingAmount: goal.targetAmount,
+      installmentMonths: goal.installmentMonths,
+    });
 
     const newGoal: Goal = {
       ...goal,
@@ -107,16 +145,20 @@ export class GoalRepository {
 
     const progress = Math.min(100, (collectedAmount / goal.targetAmount) * 100);
     const remainingAmount = Math.max(0, goal.targetAmount - collectedAmount);
-    const remainingDays = differenceInDays(new Date(goal.deadline), new Date()) + 1;
-    const dailyTargetRaw = remainingDays > 0 ? remainingAmount / remainingDays : remainingAmount;
-    const dailyTarget = roundDailyTarget(dailyTargetRaw);
+    const { dailyTarget, weeklyTarget, monthlyTarget } = this.computeTargets({
+      startDate: new Date(goal.startDate),
+      deadline: new Date(goal.deadline),
+      targetAmount: goal.targetAmount,
+      remainingAmount,
+      installmentMonths: goal.installmentMonths,
+    });
 
     const updatedGoal = {
       progress,
       remainingAmount,
       dailyTarget,
-      weeklyTarget: roundDailyTarget(dailyTargetRaw * 7),
-      monthlyTarget: roundDailyTarget(dailyTargetRaw * 30),
+      weeklyTarget,
+      monthlyTarget,
       updatedAt: new Date(),
     };
 
@@ -131,15 +173,15 @@ export class GoalRepository {
   // Dipanggil sekali tiap aplikasi dibuka (lihat AppStore.initialize).
   async recalculateActiveTargets(): Promise<void> {
     const activeGoals = await this.getActive();
-    const today = new Date();
 
     for (const goal of activeGoals) {
-      const remainingDays = differenceInCalendarDays(new Date(goal.deadline), today) + 1;
-      const dailyTargetRaw =
-        remainingDays > 0 ? goal.remainingAmount / remainingDays : goal.remainingAmount;
-      const dailyTarget = roundDailyTarget(dailyTargetRaw);
-      const weeklyTarget = roundDailyTarget(dailyTargetRaw * 7);
-      const monthlyTarget = roundDailyTarget(dailyTargetRaw * 30);
+      const { dailyTarget, weeklyTarget, monthlyTarget } = this.computeTargets({
+        startDate: new Date(goal.startDate),
+        deadline: new Date(goal.deadline),
+        targetAmount: goal.targetAmount,
+        remainingAmount: goal.remainingAmount,
+        installmentMonths: goal.installmentMonths,
+      });
 
       // Hanya tulis ke DB kalau memang berubah, supaya tidak boros write tiap buka app
       if (

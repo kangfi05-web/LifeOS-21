@@ -28,6 +28,7 @@ interface GoalState {
     color?: string;
     notes?: string;
     walletId?: string;
+    installmentMonths?: number;
   }) => Promise<Goal>;
   updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
