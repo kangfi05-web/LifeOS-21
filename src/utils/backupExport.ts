@@ -9,20 +9,39 @@
 import { db } from '../database';
 import { auditLogRepository } from '../repositories/AuditLogRepository';
 import { settingsRepository } from '../repositories/OtherRepositories';
+import { DATABASE_VERSION } from '../constants';
 import pkg from '../../package.json';
 
 const BACKUP_FORMAT = 'LifeOS_Backup';
-const BACKUP_FORMAT_VERSION = 2;
+const BACKUP_FORMAT_VERSION = 3;
 
 // Tabel yang sengaja TIDAK ikut di-clear/ditimpa saat restore, karena sifatnya
 // metadata sistem pemulihan itu sendiri (bukan data yang dimasukkan user).
 const RESTORE_EXCLUDED_TABLES = new Set(['auditLog']);
+
+// Backup Passport — identitas & metadata resmi tiap file .los (Book 22.1)
+export interface BackupPassport {
+  backupFormatVersion: number;
+  appVersion: string;
+  databaseVersion: number;
+  installationId: string;
+  profileName: string;
+  createdDate: string; // YYYY-MM-DD
+  createdTime: string; // HH:mm:ss
+  timezone: string;
+  checksum: string;
+  databaseSizeBytes: number;
+  totalTable: number;
+  totalRecord: number;
+  compressionVersion: number; // 0 = tanpa kompresi
+}
 
 export interface BackupFile {
   format: string;
   formatVersion: number;
   appVersion: string;
   exportedAt: string;
+  passport?: BackupPassport; // baru ada mulai formatVersion 3 (Book 22.1)
   tableCounts: Record<string, number>;
   totalRecords: number;
   checksum: string;
@@ -36,6 +55,8 @@ interface LegacyBackupFile {
   data: Record<string, unknown[]>;
 }
 
+export type InstallationMatch = 'same' | 'different' | 'unknown';
+
 export interface RestorePreview {
   valid: boolean;
   reason?: string;
@@ -46,6 +67,10 @@ export interface RestorePreview {
   totalRecords?: number;
   checksumValid?: boolean;
   tableCounts?: Record<string, number>;
+  // Identity & Security (Book 22.1)
+  profileName?: string;
+  installationId?: string;
+  installationMatch?: InstallationMatch;
 }
 
 export interface BackupHealth {
@@ -81,6 +106,14 @@ function getAllTableNames(): string[] {
   return db.tables.map((t) => t.name);
 }
 
+async function getCurrentInstallationInfo(): Promise<{ installationId: string; profileName: string }> {
+  const settings = await settingsRepository.get();
+  return {
+    installationId: settings?.installationId || 'UNKNOWN',
+    profileName: settings?.profileName?.trim() || 'Unknown User',
+  };
+}
+
 export async function exportBackupData(): Promise<BackupFile> {
   const tableNames = getAllTableNames();
   const data: Record<string, unknown[]> = {};
@@ -94,13 +127,33 @@ export async function exportBackupData(): Promise<BackupFile> {
     totalRecords += rows.length;
   }
 
-  const checksum = await computeChecksum(JSON.stringify(data));
+  const dataJson = JSON.stringify(data);
+  const checksum = await computeChecksum(dataJson);
+  const { installationId, profileName } = await getCurrentInstallationInfo();
+
+  const now = new Date();
+  const passport: BackupPassport = {
+    backupFormatVersion: BACKUP_FORMAT_VERSION,
+    appVersion: pkg.version,
+    databaseVersion: DATABASE_VERSION,
+    installationId,
+    profileName,
+    createdDate: now.toISOString().split('T')[0],
+    createdTime: now.toTimeString().split(' ')[0],
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    checksum,
+    databaseSizeBytes: new Blob([dataJson]).size,
+    totalTable: tableNames.length,
+    totalRecord: totalRecords,
+    compressionVersion: 0,
+  };
 
   return {
     format: BACKUP_FORMAT,
     formatVersion: BACKUP_FORMAT_VERSION,
     appVersion: pkg.version,
-    exportedAt: new Date().toISOString(),
+    exportedAt: now.toISOString(),
+    passport,
     tableCounts,
     totalRecords,
     checksum,
@@ -175,9 +228,18 @@ export async function previewBackupFile(file: File): Promise<RestorePreview> {
     return { valid: false, reason: 'File bukan format backup yang valid (bukan JSON/.los yang benar).' };
   }
 
+  const currentInstallationId = (await getCurrentInstallationInfo()).installationId;
+
   if (isNewFormat(parsed)) {
     const recomputed = await computeChecksum(JSON.stringify(parsed.data));
     const checksumValid = recomputed === parsed.checksum;
+    const backupInstallationId = parsed.passport?.installationId;
+
+    let installationMatch: InstallationMatch = 'unknown';
+    if (backupInstallationId && currentInstallationId !== 'UNKNOWN') {
+      installationMatch = backupInstallationId === currentInstallationId ? 'same' : 'different';
+    }
+
     return {
       valid: true,
       isLegacyFormat: false,
@@ -187,6 +249,9 @@ export async function previewBackupFile(file: File): Promise<RestorePreview> {
       totalRecords: parsed.totalRecords,
       checksumValid,
       tableCounts: parsed.tableCounts,
+      profileName: parsed.passport?.profileName,
+      installationId: backupInstallationId,
+      installationMatch,
     };
   }
 
@@ -205,6 +270,7 @@ export async function previewBackupFile(file: File): Promise<RestorePreview> {
       tableCounts: Object.fromEntries(
         Object.entries(parsed.data).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
       ),
+      installationMatch: 'unknown', // backup lama tidak punya Installation ID sama sekali
     };
   }
 
@@ -217,22 +283,24 @@ export async function restoreBackupFromFile(
   file: File,
   mode: 'replace' | 'merge' = 'replace'
 ): Promise<{ success: boolean; message: string }> {
+  const auditType: 'restore' | 'import' = mode === 'merge' ? 'import' : 'restore';
+  const actionLabel = mode === 'merge' ? 'Import' : 'Restore';
   const preview = await previewBackupFile(file);
 
   if (!preview.valid) {
-    await auditLogRepository.log({ type: 'restore', status: 'failed', detail: preview.reason });
+    await auditLogRepository.log({ type: auditType, status: 'failed', detail: preview.reason });
     return { success: false, message: preview.reason ?? 'File backup tidak valid.' };
   }
 
   if (preview.checksumValid === false) {
     await auditLogRepository.log({
-      type: 'restore',
+      type: auditType,
       status: 'failed',
       detail: 'Checksum tidak cocok — file kemungkinan rusak atau sudah diubah.',
     });
     return {
       success: false,
-      message: 'File backup gagal diverifikasi (checksum tidak cocok). File mungkin rusak atau sudah dimodifikasi. Restore dibatalkan demi keamanan data Anda.',
+      message: `File backup gagal diverifikasi (checksum tidak cocok). File mungkin rusak atau sudah dimodifikasi. ${actionLabel} dibatalkan demi keamanan data Anda.`,
     };
   }
 
@@ -242,8 +310,8 @@ export async function restoreBackupFromFile(
 
   const tableNames = getAllTableNames().filter((name) => !RESTORE_EXCLUDED_TABLES.has(name));
 
-  // Safe Restore: ambil snapshot seluruh data saat ini sebagai jaring pengaman tambahan
-  // di atas atomicity bawaan Dexie transaction.
+  // Safe Restore/Import: ambil snapshot seluruh data saat ini sebagai jaring pengaman tambahan
+  // di atas atomicity bawaan Dexie transaction. Restore = ganti total, Import = gabungkan (tidak hapus).
   const snapshot: Record<string, unknown[]> = {};
   for (const name of tableNames) {
     snapshot[name] = await db.table(name).toArray();
@@ -258,6 +326,8 @@ export async function restoreBackupFromFile(
           await db.table(name).clear();
         }
         if (rows.length > 0) {
+          // bulkPut = upsert berdasarkan primary key: data baru masuk, data dengan id
+          // yang sama ikut ter-update, data lama yang TIDAK ada di backup tetap dibiarkan (mode import)
           await db.table(name).bulkPut(rows);
         }
       }
@@ -279,25 +349,30 @@ export async function restoreBackupFromFile(
     }
 
     await auditLogRepository.log({
-      type: 'restore',
+      type: auditType,
       status: 'failed',
       detail: err instanceof Error ? err.message : String(err),
     });
 
     return {
       success: false,
-      message: 'Restore gagal di tengah proses. Data lama Anda sudah dipulihkan kembali secara otomatis, tidak ada data yang hilang.',
+      message: `${actionLabel} gagal di tengah proses. Data lama Anda sudah dipulihkan kembali secara otomatis, tidak ada data yang hilang.`,
     };
   }
 
   await auditLogRepository.log({
-    type: 'restore',
+    type: auditType,
     status: 'success',
     recordCount: preview.totalRecords,
     tableCount: preview.tableCount,
+    detail:
+      preview.installationMatch === 'different'
+        ? `${actionLabel} dari instalasi lain (${preview.installationId ?? 'unknown'})`
+        : undefined,
   });
 
-  // Reset counter perubahan karena data sekarang identik dengan backup yang baru di-restore
+  // Reset counter perubahan karena data sekarang identik dengan backup yang baru di-restore.
+  // Untuk mode import, tetap reset karena datanya sudah dianggap tersinkron dengan file ini.
   const settings = await settingsRepository.get();
   if (settings) {
     await settingsRepository.update(settings.id, { changesSinceBackup: 0 });
@@ -305,9 +380,12 @@ export async function restoreBackupFromFile(
 
   return {
     success: true,
-    message: preview.isLegacyFormat
-      ? 'Data berhasil dipulihkan dari backup (format lama).'
-      : 'Data berhasil dipulihkan dari backup.',
+    message:
+      mode === 'merge'
+        ? 'Data berhasil digabungkan (import) dari backup. Data lama Anda tetap ada.'
+        : preview.isLegacyFormat
+          ? 'Data berhasil dipulihkan dari backup (format lama).'
+          : 'Data berhasil dipulihkan dari backup.',
   };
 }
 

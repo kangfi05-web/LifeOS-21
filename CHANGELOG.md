@@ -7,6 +7,15 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.12.0] - 2026-07-08
+### Added
+- **Backup Identity & Security** — melengkapi Recovery Center dengan identitas & keamanan asal-usul backup:
+  - **Installation ID** unik permanen dibuat otomatis sekali per perangkat (format `LIFEOS-XXXX-XXXX-XXXX`), user lama juga otomatis dapat ID ini tanpa kehilangan data
+  - **Profil Pemilik**: nama bisa diisi di Recovery Center, ikut tersimpan di tiap file backup ("Unknown User" kalau kosong)
+  - **Backup Passport**: setiap file `.los` sekarang punya metadata lengkap — versi app, versi database, Installation ID, nama pemilik, tanggal & waktu (dengan timezone), checksum, ukuran data, jumlah tabel/record
+  - **Validasi asal backup**: saat restore, Installation ID di file dibandingkan dengan perangkat saat ini — kalau beda, muncul peringatan jelas sebelum lanjut ("Backup ini berasal dari instalasi LifeOS yang berbeda")
+  - **Import ≠ Restore** dipisah tegas: tombol **Restore** (ganti semua data) dan **Import** (gabungkan tanpa hapus data lama) sekarang dua aksi terpisah, masing-masing tercatat berbeda di Audit Log
+
 ## [1.11.0] - 2026-07-08
 ### Added
 - **Recovery Center** — perombakan total sistem backup jadi pusat perlindungan data:

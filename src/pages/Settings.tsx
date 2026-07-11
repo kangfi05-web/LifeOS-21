@@ -220,7 +220,7 @@ export function SettingsPage() {
       >
         <p className="font-semibold text-white">LifeOS</p>
         <p className="mt-1">Personal Financial Operating System</p>
-        <p className="mt-2">Version 1.11.0</p>
+        <p className="mt-2">Version 1.12.0</p>
       </motion.div>
     </div>
   );

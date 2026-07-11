@@ -66,6 +66,16 @@ export class LifeOSDatabase extends Dexie {
 
 export const db = new LifeOSDatabase();
 
+// Buat Installation ID unik permanen, format: LIFEOS-XXXX-XXXX-XXXX
+function generateInstallationId(): string {
+  const segment = () =>
+    Math.floor(Math.random() * 0xffff)
+      .toString(16)
+      .toUpperCase()
+      .padStart(4, '0');
+  return `LIFEOS-${segment()}-${segment()}-${segment()}`;
+}
+
 // Initialize Default Data
 export async function initializeDatabase(): Promise<void> {
   const existingSettings = await db.settings.count();
@@ -79,10 +89,11 @@ export async function initializeDatabase(): Promise<void> {
       updatedAt: new Date(),
     });
 
-    // Create Default Settings
+    // Create Default Settings (termasuk Installation ID permanen untuk perangkat ini)
     await db.settings.add({
       id: uuidv4(),
       ...DEFAULT_SETTINGS,
+      installationId: generateInstallationId(),
     });
 
     // Create Default Wallets
@@ -102,6 +113,13 @@ export async function initializeDatabase(): Promise<void> {
         progress: 0,
         completed: false,
       });
+    }
+  } else {
+    // User lama (settings sudah ada sebelum fitur Installation ID ini dibuat) —
+    // generate sekali saja kalau belum punya, tanpa mengubah data lain.
+    const settings = await db.settings.toCollection().first();
+    if (settings && !settings.installationId) {
+      await db.settings.update(settings.id, { installationId: generateInstallationId() });
     }
   }
 }

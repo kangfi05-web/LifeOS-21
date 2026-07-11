@@ -8,6 +8,7 @@ import {
   DatabaseBackup,
   Download,
   Upload,
+  FilePlus2,
   ShieldCheck,
   ShieldAlert,
   History,
@@ -15,6 +16,8 @@ import {
   XCircle,
   AlertTriangle,
   X,
+  Fingerprint,
+  Pencil,
 } from 'lucide-react';
 import {
   downloadBackupFile,
@@ -25,6 +28,7 @@ import {
   RestorePreview,
 } from '../utils/backupExport';
 import { auditLogRepository } from '../repositories/AuditLogRepository';
+import { settingsRepository } from '../repositories/OtherRepositories';
 import { AuditLogEntry } from '../types';
 
 const AUDIT_TYPE_LABEL: Record<AuditLogEntry['type'], string> = {
@@ -43,19 +47,40 @@ export function RecoveryCenter() {
   const [isExporting, setIsExporting] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingMode, setPendingMode] = useState<'replace' | 'merge'>('replace');
   const [preview, setPreview] = useState<RestorePreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [installationId, setInstallationId] = useState<string>('');
+  const [profileName, setProfileName] = useState<string>('');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileInput, setProfileInput] = useState('');
+
   const refresh = async () => {
-    const [h, logs] = await Promise.all([getBackupHealth(), auditLogRepository.getRecent(8)]);
+    const [h, logs, settings] = await Promise.all([
+      getBackupHealth(),
+      auditLogRepository.getRecent(8),
+      settingsRepository.get(),
+    ]);
     setHealth(h);
     setAuditLog(logs);
+    setInstallationId(settings?.installationId ?? '');
+    setProfileName(settings?.profileName ?? '');
   };
 
   useEffect(() => {
     refresh();
   }, []);
+
+  const handleSaveProfile = async () => {
+    const settings = await settingsRepository.get();
+    if (!settings) return;
+    const trimmed = profileInput.trim();
+    await settingsRepository.update(settings.id, { profileName: trimmed });
+    setProfileName(trimmed);
+    setEditingProfile(false);
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -74,7 +99,10 @@ export function RecoveryCenter() {
     }
   };
 
-  const handlePickFile = () => fileInputRef.current?.click();
+  const handlePickFile = (mode: 'replace' | 'merge') => {
+    setPendingMode(mode);
+    fileInputRef.current?.click();
+  };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,7 +131,7 @@ export function RecoveryCenter() {
     if (!pendingFile) return;
     setIsRestoring(true);
     try {
-      const result = await restoreBackupFromFile(pendingFile, 'replace');
+      const result = await restoreBackupFromFile(pendingFile, pendingMode);
       setStatus({ type: result.success ? 'success' : 'error', message: result.message });
       closePreview();
       await refresh();
@@ -111,7 +139,7 @@ export function RecoveryCenter() {
         setTimeout(() => window.location.reload(), 1200);
       }
     } catch {
-      setStatus({ type: 'error', message: 'Restore gagal. File mungkin rusak.' });
+      setStatus({ type: 'error', message: 'Proses gagal. File mungkin rusak.' });
     } finally {
       setIsRestoring(false);
     }
@@ -161,6 +189,49 @@ export function RecoveryCenter() {
         </div>
       </div>
 
+      {/* Profile & Installation Identity */}
+      <div className="bg-white/5 rounded-xl p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Fingerprint className="w-4 h-4 text-base-400" />
+          <p className="text-sm font-medium text-base-400">Identitas Perangkat & Pemilik</p>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-base-400">Installation ID</span>
+            <code className="text-xs bg-black/20 px-2 py-1 rounded">{installationId || '—'}</code>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-base-400">Nama Pemilik</span>
+            {editingProfile ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={profileInput}
+                  onChange={(e) => setProfileInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveProfile()}
+                  placeholder="Nama Anda"
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm w-36 focus:outline-none focus:border-primary-500/50"
+                />
+                <button onClick={handleSaveProfile} className="text-xs text-primary-400 font-medium">
+                  Simpan
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setProfileInput(profileName);
+                  setEditingProfile(true);
+                }}
+                className="flex items-center gap-1.5 font-medium hover:text-primary-400"
+              >
+                {profileName || 'Unknown User'}
+                <Pencil className="w-3 h-3 text-base-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Backup Health */}
       {health && (
         <div className="bg-white/5 rounded-xl p-4 mb-4">
@@ -194,22 +265,30 @@ export function RecoveryCenter() {
         bisa disimpan di Drive, email, atau perangkat lain.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           onClick={handleExport}
           disabled={isExporting}
-          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium disabled:opacity-50"
+          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium disabled:opacity-50 text-sm"
         >
           <Download className="w-4 h-4" />
-          {isExporting ? 'Mengekspor...' : 'Backup Sekarang (.los)'}
+          {isExporting ? 'Mengekspor...' : 'Backup (.los)'}
         </button>
 
         <button
-          onClick={handlePickFile}
-          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium"
+          onClick={() => handlePickFile('replace')}
+          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium text-sm"
         >
           <Upload className="w-4 h-4" />
-          Restore dari Backup
+          Restore
+        </button>
+
+        <button
+          onClick={() => handlePickFile('merge')}
+          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10 transition-all font-medium text-sm"
+        >
+          <FilePlus2 className="w-4 h-4" />
+          Import
         </button>
         <input
           ref={fileInputRef}
@@ -219,6 +298,10 @@ export function RecoveryCenter() {
           onChange={handleFileSelected}
         />
       </div>
+      <p className="text-xs text-base-400 mt-2">
+        <strong>Restore</strong> = ganti seluruh data dengan isi backup. <strong>Import</strong> =
+        gabungkan data backup ke data yang sudah ada (data lama tetap tersimpan).
+      </p>
 
       {status && (
         <div
@@ -284,7 +367,9 @@ export function RecoveryCenter() {
               className="relative w-full max-w-md bg-surface border border-white/10 rounded-2xl shadow-2xl p-6"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Preview Restore</h3>
+                <h3 className="text-lg font-semibold">
+                  Preview {pendingMode === 'merge' ? 'Import' : 'Restore'}
+                </h3>
                 <button onClick={closePreview} className="text-base-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
@@ -302,6 +387,15 @@ export function RecoveryCenter() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {preview.installationMatch === 'different' && (
+                    <div className="flex items-start gap-2 bg-danger/10 border border-danger/30 rounded-xl p-3 text-sm text-danger">
+                      <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>
+                        Backup ini berasal dari <strong>instalasi LifeOS yang berbeda</strong> (bukan
+                        perangkat ini). Pastikan Anda benar-benar ingin memulihkan data ini.
+                      </span>
+                    </div>
+                  )}
                   {preview.checksumValid === false && (
                     <div className="flex items-start gap-2 bg-danger/10 border border-danger/30 rounded-xl p-3 text-sm text-danger">
                       <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -311,11 +405,17 @@ export function RecoveryCenter() {
                   {preview.isLegacyFormat && (
                     <div className="flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-xl p-3 text-sm text-warning">
                       <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <span>Backup format lama (tanpa checksum), tapi tetap bisa dipulihkan.</span>
+                      <span>Backup format lama (tanpa checksum/identitas), tapi tetap bisa dipulihkan.</span>
                     </div>
                   )}
 
                   <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
+                    {preview.profileName && (
+                      <div className="flex justify-between">
+                        <span className="text-base-400">Nama Pemilik</span>
+                        <span className="font-medium">{preview.profileName}</span>
+                      </div>
+                    )}
                     {preview.exportedAt && (
                       <div className="flex justify-between">
                         <span className="text-base-400">Tanggal Backup</span>
@@ -324,6 +424,16 @@ export function RecoveryCenter() {
                         </span>
                       </div>
                     )}
+                    <div className="flex justify-between">
+                      <span className="text-base-400">Asal Backup</span>
+                      <span className="font-medium">
+                        {preview.installationMatch === 'same'
+                          ? 'Perangkat ini'
+                          : preview.installationMatch === 'different'
+                            ? 'Instalasi lain'
+                            : 'Tidak diketahui'}
+                      </span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-base-400">Jumlah Tabel</span>
                       <span className="font-medium">{preview.tableCount}</span>
@@ -343,8 +453,10 @@ export function RecoveryCenter() {
                   </div>
 
                   <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 text-xs text-warning">
-                    Restore akan MENGGANTI seluruh data Anda saat ini dengan isi file ini. Disarankan
-                    backup data saat ini dulu sebelum lanjut.
+                    {pendingMode === 'merge'
+                      ? 'Import akan MENGGABUNGKAN data dari file ini ke data Anda saat ini. Data lama tetap ada.'
+                      : 'Restore akan MENGGANTI seluruh data Anda saat ini dengan isi file ini.'}{' '}
+                    Disarankan backup data saat ini dulu sebelum lanjut.
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
@@ -360,7 +472,11 @@ export function RecoveryCenter() {
                       disabled={isRestoring || preview.checksumValid === false}
                       className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary-500 to-accent text-sm font-semibold text-white disabled:opacity-50"
                     >
-                      {isRestoring ? 'Memulihkan...' : 'Lanjutkan Restore'}
+                      {isRestoring
+                        ? 'Memproses...'
+                        : pendingMode === 'merge'
+                          ? 'Lanjutkan Import'
+                          : 'Lanjutkan Restore'}
                     </button>
                   </div>
                 </div>

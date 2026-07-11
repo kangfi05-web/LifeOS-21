@@ -41,6 +41,9 @@ export interface Settings {
   // Data Protection & Recovery
   lastBackupAt?: Date;
   changesSinceBackup?: number;
+  // Backup Identity & Security (Book 22.1)
+  installationId?: string; // dibuat sekali saat pertama kali app dijalankan, permanen
+  profileName?: string; // nama pemilik data, ditulis ke Backup Passport
 }
 
 export interface AuditLogEntry {
