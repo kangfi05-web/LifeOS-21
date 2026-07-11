@@ -14,8 +14,9 @@ import {
   LifeJourney,
   AnalyticsCache,
   Backup,
+  AuditLogEntry,
 } from '../types';
-import { DATABASE_NAME, DATABASE_VERSION, DEFAULT_WALLETS, DEFAULT_SETTINGS, ACHIEVEMENTS_DEF } from '../constants';
+import { DATABASE_NAME, DEFAULT_WALLETS, DEFAULT_SETTINGS, ACHIEVEMENTS_DEF } from '../constants';
 import { v4 as uuidv4 } from 'uuid';
 
 export class LifeOSDatabase extends Dexie {
@@ -31,11 +32,12 @@ export class LifeOSDatabase extends Dexie {
   lifeJourney!: Table<LifeJourney, string>;
   analyticsCache!: Table<AnalyticsCache, string>;
   backups!: Table<Backup, string>;
+  auditLog!: Table<AuditLogEntry, string>;
 
   constructor() {
     super(DATABASE_NAME);
 
-    this.version(DATABASE_VERSION).stores({
+    const baseSchema = {
       users: 'id, name, createdAt, updatedAt',
       settings: 'id, theme, currency',
       goals: 'id, title, category, priority, status, deadline, createdAt, deletedAt',
@@ -48,6 +50,16 @@ export class LifeOSDatabase extends Dexie {
       lifeJourney: 'id, date, category, goalId, createdAt',
       analyticsCache: 'id, type, date',
       backups: 'id, createdAt',
+    };
+
+    // Versi 1 (skema asli) — dipertahankan supaya user lama bisa upgrade dengan aman
+    this.version(1).stores(baseSchema);
+
+    // Versi 2 — tambah tabel auditLog untuk mencatat riwayat backup/restore/import/export.
+    // Additive-only (tidak mengubah/menghapus tabel lama), jadi data user lama tetap utuh.
+    this.version(2).stores({
+      ...baseSchema,
+      auditLog: 'id, type, status, timestamp',
     });
   }
 }

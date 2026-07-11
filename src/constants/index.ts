@@ -5,7 +5,7 @@ import { Wallet, Achievement, Settings } from '../types';
 export const APP_NAME = 'LifeOS';
 export const APP_VERSION = '1.0.0';
 export const DATABASE_NAME = 'LifeOS_DB';
-export const DATABASE_VERSION = 1;
+export const DATABASE_VERSION = 2;
 
 // Currency
 export const DEFAULT_CURRENCY = 'IDR';

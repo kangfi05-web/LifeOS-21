@@ -6,6 +6,7 @@ import { Settings, User } from '../types';
 import { userRepository, settingsRepository } from '../repositories/OtherRepositories';
 import { goalRepository } from '../repositories/GoalRepository';
 import { initializeDatabase } from '../database';
+import { startBackupChangeTracker } from '../utils/backupChangeTracker';
 
 interface AppState {
   initialized: boolean;
@@ -46,6 +47,9 @@ export const useAppStore = create<AppState>()(
           // Hitung ulang target harian semua goal aktif berdasarkan tanggal hari ini,
           // supaya kekurangan dari hari-hari yang terlewat otomatis "mengejar" ke sisa hari.
           await goalRepository.recalculateActiveTargets();
+
+          // Mulai lacak perubahan data untuk Smart Reminder backup
+          startBackupChangeTracker();
 
           // Load user and settings
           const user = await userRepository.getCurrentUser();

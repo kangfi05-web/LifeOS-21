@@ -6,3 +6,4 @@ export { walletRepository, WalletRepository } from './WalletRepository';
 export { dailyProgressRepository, DailyProgressRepository } from './DailyProgressRepository';
 export { achievementRepository, AchievementRepository } from './AchievementRepository';
 export { lifeJourneyRepository, LifeJourneyRepository } from './LifeJourneyRepository';
+export { auditLogRepository, AuditLogRepository } from './AuditLogRepository';

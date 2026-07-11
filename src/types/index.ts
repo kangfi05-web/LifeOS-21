@@ -38,6 +38,19 @@ export interface Settings {
   quickAddAmounts: number[];
   notification: boolean;
   firstDayOfWeek: number;
+  // Data Protection & Recovery
+  lastBackupAt?: Date;
+  changesSinceBackup?: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  type: 'backup' | 'restore' | 'import' | 'export' | 'delete_all' | 'migration';
+  status: 'success' | 'failed';
+  detail?: string;
+  recordCount?: number;
+  tableCount?: number;
+  timestamp: Date;
 }
 
 export interface Goal {

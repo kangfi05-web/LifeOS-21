@@ -7,6 +7,18 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.11.0] - 2026-07-08
+### Added
+- **Recovery Center** — perombakan total sistem backup jadi pusat perlindungan data:
+  - **Auto-Discovery**: backup otomatis membaca SEMUA tabel Dexie yang ada saat itu (tidak ada daftar tabel hardcode) — kalau nanti ada tabel/fitur baru, otomatis ikut ter-backup tanpa perlu ubah kode
+  - **Checksum verifikasi** (SHA-256): tiap backup punya checksum yang diverifikasi ulang saat restore, supaya file yang rusak/berubah terdeteksi sebelum menimpa data
+  - **Restore Preview**: sebelum restore benar-benar dijalankan, tampil dulu detail file (tanggal backup, jumlah tabel, jumlah data, status verifikasi) — user baru konfirmasi setelah yakin
+  - **Safe Restore**: snapshot data lama diambil otomatis sebelum restore; kalau proses gagal di tengah jalan, data lama dipulihkan otomatis tanpa ada yang hilang
+  - **Backup Health Score & Smart Reminder**: skor kesehatan backup dihitung dari berapa banyak perubahan data yang belum ter-backup (bukan cuma dari waktu) — ada badge "Backup Disarankan" (20+ perubahan) dan "Prioritas Tinggi" (100+ perubahan)
+  - **Audit Log**: riwayat backup/restore/import/export tersimpan dan bisa dilihat di Recovery Center
+  - Format file baru **`.los`** (LifeOS Backup), tetap bisa membaca backup format lama (`.json`) dari versi sebelumnya untuk kompatibilitas mundur
+- Skema database naik ke versi 2 (tambah tabel `auditLog`) — migrasi otomatis & aman, data lama tidak terpengaruh
+
 ## [1.10.0] - 2026-07-08
 ### Fixed
 - **Grafik "Progress Mingguan" di Dashboard kini pakai data asli**, bukan sample hardcode `[80, 100, 45, 90, 30, 60, 75]` — dihitung dari tabel `dailyProgress` (target vs realisasi nabung tiap hari), sama seperti perbaikan Analytics di v1.2.0
