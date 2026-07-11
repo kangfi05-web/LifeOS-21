@@ -90,11 +90,12 @@ export function calculateInstallmentInfo(
   deadline: Date | string,
   targetAmount: number,
   remainingAmount: number,
-  installmentMonths: number
+  installmentMonths: number,
+  now: Date = new Date()
 ): InstallmentInfo {
   const start = startOfDay(new Date(startDate));
   const end = startOfDay(new Date(deadline));
-  const today = startOfDay(new Date());
+  const today = startOfDay(now);
 
   const totalMonths = Math.max(1, installmentMonths);
   const monthlyInstallment = targetAmount / totalMonths;

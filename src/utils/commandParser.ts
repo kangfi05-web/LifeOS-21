@@ -83,7 +83,8 @@ function parseAmount(raw: string): number | null {
 }
 
 export function parseNaturalCommand(input: string): ParsedCommand | null {
-  const text = input.trim().toLowerCase();
+  const trimmedOriginal = input.trim();
+  const text = trimmedOriginal.toLowerCase();
   if (!text) return null;
 
   // "tambah dana 50000" / "tambah saving 50rb" / "nabung 20k"
@@ -100,14 +101,18 @@ export function parseNaturalCommand(input: string): ParsedCommand | null {
   }
 
   // "tambah target Laptop" / "buat target Liburan"
+  // Ambil judulnya dari teks ASLI (bukan yang sudah di-lowercase) supaya kapitalisasi
+  // yang diketik user tetap terjaga, mis. "Laptop" tidak berubah jadi "laptop".
   m = text.match(/^(?:tambah|buat)\s+target\s+(.+)$/);
-  if (m && m[1].trim().length > 0) {
-    const title = m[1].trim();
-    return {
-      type: 'add-goal',
-      label: `Buat target baru "${title}"`,
-      payload: { title },
-    };
+  if (m) {
+    const title = trimmedOriginal.slice(trimmedOriginal.length - m[1].length).trim();
+    if (title.length > 0) {
+      return {
+        type: 'add-goal',
+        label: `Buat target baru "${title}"`,
+        payload: { title },
+      };
+    }
   }
 
   // "backup semua data" / "backup data" / "export data"

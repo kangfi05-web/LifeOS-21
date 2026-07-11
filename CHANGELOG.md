@@ -7,6 +7,14 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.14.0] - 2026-07-12
+### Added
+- **Automated testing (Vitest)** — 31 test otomatis untuk logic paling kritis & rawan rusak diam-diam: perhitungan cicilan bulanan (catch-up antar bulan), pembulatan target harian, fuzzy search, dan natural command parser. Sekarang jalan otomatis di CI tiap push
+### Fixed
+- **Bug di Natural Command**: mengetik `tambah target Laptop` di Command Center (CTRL+K) sebelumnya membuat nama target berubah jadi huruf kecil semua (`laptop`) — sekarang kapitalisasi yang diketik user tetap terjaga. Ditemukan lewat automated test yang baru dibuat
+### Changed
+- `calculateInstallmentInfo` sekarang menerima parameter waktu opsional (untuk testability), tidak mengubah perilaku default
+
 ## [1.13.0] - 2026-07-12
 ### Added
 - **Error Boundary** — kalau ada error tak terduga di bagian manapun aplikasi, sekarang tidak lagi bikin seluruh layar jadi blank putih. Muncul halaman fallback dengan tombol **"Backup Data Darurat"** (bisa langsung ekspor data walau aplikasi sedang error) dan **"Muat Ulang Aplikasi"**
