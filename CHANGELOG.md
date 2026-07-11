@@ -7,6 +7,11 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.13.0] - 2026-07-12
+### Added
+- **Error Boundary** — kalau ada error tak terduga di bagian manapun aplikasi, sekarang tidak lagi bikin seluruh layar jadi blank putih. Muncul halaman fallback dengan tombol **"Backup Data Darurat"** (bisa langsung ekspor data walau aplikasi sedang error) dan **"Muat Ulang Aplikasi"**
+- **CI otomatis via GitHub Actions** — tiap push ke `main`, otomatis dijalankan typecheck + lint + build di GitHub sendiri, terpisah dari platform hosting manapun. Jadi status kode selalu bisa diverifikasi meski platform hosting (Netlify dsb) sedang bermasalah
+
 ## [1.12.0] - 2026-07-08
 ### Added
 - **Backup Identity & Security** — melengkapi Recovery Center dengan identitas & keamanan asal-usul backup:
