@@ -7,6 +7,12 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.15.0] - 2026-07-12
+### Performance
+- **Idle-time prefetching**: setelah halaman pertama selesai render, semua halaman lain (termasuk chunk terberat — recharts di Analytics) otomatis di-download diam-diam di background saat browser sedang idle. Efeknya: pindah antar halaman jadi terasa instan karena chunk-nya sudah siap sebelum diklik, tanpa menambah beban ke loading awal aplikasi
+### Notes
+- Ukuran `vendor-charts` (recharts, ~512KB/153KB gzip) tetap dipertahankan apa adanya setelah dievaluasi — sudah terisolasi sempurna (cuma dipakai 1 halaman, tidak pernah ikut ke loading awal), dan mengganti library chart untuk manfaat marginal dinilai tidak sepadan dengan risiko/effort rewrite
+
 ## [1.14.0] - 2026-07-12
 ### Added
 - **Automated testing (Vitest)** — 31 test otomatis untuk logic paling kritis & rawan rusak diam-diam: perhitungan cicilan bulanan (catch-up antar bulan), pembulatan target harian, fuzzy search, dan natural command parser. Sekarang jalan otomatis di CI tiap push

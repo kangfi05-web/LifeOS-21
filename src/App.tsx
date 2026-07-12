@@ -28,6 +28,46 @@ function App() {
     }
   }, [initialized, initialize]);
 
+  // Prefetch semua halaman lain di background saat browser sedang idle, setelah
+  // halaman pertama selesai render. Chunk yang paling berat (recharts di Analytics)
+  // jadi sudah ter-download diam-diam sebelum user sempat klik ke halaman itu,
+  // tanpa menambah beban ke loading awal aplikasi.
+  useEffect(() => {
+    if (!initialized) return;
+
+    const prefetchAll = () => {
+      import('./pages/Dashboard');
+      import('./pages/Goals');
+      import('./pages/Wallet');
+      import('./pages/Calendar');
+      import('./pages/Analytics');
+      import('./pages/Achievements');
+      import('./pages/LifeJourney');
+      import('./pages/DreamUniverse');
+      import('./pages/Simulator');
+      import('./pages/Settings');
+    };
+
+    type IdleWindow = typeof window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const idleWindow = window as IdleWindow;
+    const hasIdleCallback = typeof idleWindow.requestIdleCallback === 'function';
+
+    const idleId = hasIdleCallback
+      ? idleWindow.requestIdleCallback!(prefetchAll)
+      : window.setTimeout(prefetchAll, 2000);
+
+    return () => {
+      if (hasIdleCallback && idleWindow.cancelIdleCallback) {
+        idleWindow.cancelIdleCallback(idleId as number);
+      } else {
+        window.clearTimeout(idleId as number);
+      }
+    };
+  }, [initialized]);
+
   // Render current page
   const renderPage = () => {
     switch (currentPage) {
