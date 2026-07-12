@@ -243,15 +243,6 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
         keywords: ['transfer', 'pindah', 'move'],
       },
       {
-        id: 'tool-theme-light',
-        label: 'Tema Terang',
-        description: 'Ganti ke tema terang',
-        icon: 'Sun',
-        category: 'settings',
-        action: () => setTheme('light'),
-        keywords: ['light', 'terang', 'bright', 'theme'],
-      },
-      {
         id: 'tool-theme-dark',
         label: 'Tema Gelap',
         description: 'Ganti ke tema gelap',
@@ -259,15 +250,6 @@ export function CommandCenter({ onOpenGoalModal, onOpenQuickAdd }: CommandCenter
         category: 'settings',
         action: () => setTheme('dark'),
         keywords: ['dark', 'gelap', 'night', 'theme'],
-      },
-      {
-        id: 'tool-theme-auto',
-        label: 'Tema Otomatis',
-        description: 'Ikuti sistem',
-        icon: 'Globe',
-        category: 'settings',
-        action: () => setTheme('system'),
-        keywords: ['auto', 'otomatis', 'system', 'theme'],
       },
 
       // Backup

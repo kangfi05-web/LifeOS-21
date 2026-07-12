@@ -26,8 +26,15 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return defaultTheme;
-    const stored = localStorage.getItem(storageKey);
-    return (stored as Theme) || defaultTheme;
+    const stored = localStorage.getItem(storageKey) as Theme | null;
+    // Light Mode & mode Otomatis sementara dinonaktifkan (masih dalam penyempurnaan
+    // tampilan). Kalau ada nilai lama tersimpan yang bukan 'dark', kembalikan ke 'dark'
+    // supaya tidak ada user yang kejebak tampilan rusak.
+    if (stored === 'light' || stored === 'system') {
+      localStorage.setItem(storageKey, 'dark');
+      return 'dark';
+    }
+    return stored || defaultTheme;
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');

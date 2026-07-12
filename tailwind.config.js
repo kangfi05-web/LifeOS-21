@@ -116,6 +116,23 @@ export default {
           hover: 'hsl(var(--surface-hover))',
           active: 'hsl(var(--surface-active))',
         },
+        // Neutral gray scale untuk teks sekunder/caption & background netral
+        // (dipakai luas sbg text-base-400, bg-base-950, dsb di seluruh app).
+        // Sebelumnya TIDAK terdefinisi sama sekali, jadi class-class itu tidak
+        // menghasilkan styling apa pun — ini baru diperbaiki.
+        base: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0a0a0a',
+        },
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'sans-serif'],

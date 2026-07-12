@@ -49,15 +49,15 @@ export function SettingsPage() {
             <label className="block text-sm text-base-400 mb-3">Tema</label>
             <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => handleThemeChange('light')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-                  theme === 'light'
-                    ? 'border-primary-500 bg-primary-500/10'
-                    : 'border-white/5 hover:border-white/10'
-                }`}
+                disabled
+                title="Light Mode sedang disempurnakan, segera hadir"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/5 opacity-40 cursor-not-allowed relative"
               >
                 <Sun className="w-6 h-6" />
                 <span className="text-sm font-medium">Terang</span>
+                <span className="absolute -top-2 -right-2 text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full">
+                  Segera
+                </span>
               </button>
               <button
                 onClick={() => handleThemeChange('dark')}
@@ -71,17 +71,21 @@ export function SettingsPage() {
                 <span className="text-sm font-medium">Gelap</span>
               </button>
               <button
-                onClick={() => handleThemeChange('system')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
-                  theme === 'system'
-                    ? 'border-primary-500 bg-primary-500/10'
-                    : 'border-white/5 hover:border-white/10'
-                }`}
+                disabled
+                title="Otomatis (ikut sistem) sedang disempurnakan, segera hadir"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/5 opacity-40 cursor-not-allowed relative"
               >
                 <Globe className="w-6 h-6" />
                 <span className="text-sm font-medium">Otomatis</span>
+                <span className="absolute -top-2 -right-2 text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full">
+                  Segera
+                </span>
               </button>
             </div>
+            <p className="text-xs text-base-400 mt-2">
+              Light Mode & mode Otomatis sedang dalam penyempurnaan tampilan, sementara ini LifeOS
+              memakai Dark Mode.
+            </p>
           </div>
         </div>
       </motion.div>
@@ -220,7 +224,7 @@ export function SettingsPage() {
       >
         <p className="font-semibold text-white">LifeOS</p>
         <p className="mt-1">Personal Financial Operating System</p>
-        <p className="mt-2">Version 1.15.0</p>
+        <p className="mt-2">Version 1.16.0</p>
       </motion.div>
     </div>
   );

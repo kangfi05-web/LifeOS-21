@@ -7,6 +7,13 @@ Format mengikuti [Semantic Versioning](https://semver.org/lang/id/): `MAJOR.MINO
 - **MINOR**: penambahan fitur baru (tetap kompatibel)
 - **PATCH**: perbaikan bug kecil / update minor
 
+## [1.16.0] - 2026-07-12
+### Fixed
+- **Bug besar ditemukan & diperbaiki**: warna `base` (dipakai di 198+ tempat sebagai warna teks sekunder/caption di SELURUH halaman aplikasi) ternyata **tidak pernah didefinisikan** di konfigurasi Tailwind — jadi class seperti `text-base-400` tidak menghasilkan styling apa pun selama ini. Sekarang sudah didefinisikan dengan neutral gray scale yang sesuai desain aslinya
+### Changed
+- **Light Mode & mode Otomatis dinonaktifkan sementara** (di Settings maupun Command Center) — investigasi menemukan bahwa banyak warna di aplikasi (termasuk teks di pembungkus utama) di-hardcode khusus untuk dark mode, sehingga Light Mode menghasilkan teks tak terbaca (putih di atas putih). Daripada membiarkan opsi yang terlihat berfungsi tapi hasilnya rusak, untuk saat ini LifeOS resmi jalan di Dark Mode saja sampai Light Mode diperbaiki menyeluruh di rilis mendatang
+- User yang browser-nya kebetulan tersimpan preferensi Light/Otomatis dari sebelumnya, otomatis dikembalikan ke Dark Mode saat app dibuka
+
 ## [1.15.0] - 2026-07-12
 ### Performance
 - **Idle-time prefetching**: setelah halaman pertama selesai render, semua halaman lain (termasuk chunk terberat — recharts di Analytics) otomatis di-download diam-diam di background saat browser sedang idle. Efeknya: pindah antar halaman jadi terasa instan karena chunk-nya sudah siap sebelum diklik, tanpa menambah beban ke loading awal aplikasi
